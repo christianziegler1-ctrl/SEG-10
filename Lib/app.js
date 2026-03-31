@@ -1,956 +1,368 @@
-/* =========================================================
-   EINSATZBOARD – APP.JS  v8
-========================================================= */
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEG-10 Live Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&display=swap');
 
-let dragged = null
-let halteplatzCount = 0
-let abschnittCount = 0
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-let totalPatients = 0
-let currentPatientBox = null
-
-let einsatzAktiv = false
-let autosaveTimer = null
-let einsatzDateiHandle = null
-let letzterAutosave = null
-
-let einsatzStartZeit = null
-let timerInterval = null
-
-let eventLog = []
-let vehicleHotkeysActive = false
-
-let currentSichtung = null
-let sichtungCounts = { SK1: 0, SK2: 0, SK3: 0, SK4: 0 }
-
-let alarmstufen = []
-let aktiveAlarmstufe = null
-
-let fahrzeugLog = {}
-
-document.addEventListener("DOMContentLoaded", () => {
-  initDrag()
-  initSEG()
-  initEnter()
-  initPatients()
-  initShortcuts()
-  document.querySelectorAll(".patients").forEach(p => {
-    if(!p.dataset.manual) p.dataset.manual = p.innerText.trim() || "0"
-  })
-  updatePatients()
-  initReloadProtection()
-  renderShortcutList()
-})
-
-/* VOLLBILD */
-function toggleFullscreen(){
-  if(!document.fullscreenElement){
-    document.documentElement.requestFullscreen().catch(err=>console.warn(err))
-  }else{
-    document.exitFullscreen()
+  body {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    background: #0d0f14;
+    color: #e8ecf4;
+    min-height: 100vh;
+    padding: 12px;
   }
-}
-document.addEventListener("fullscreenchange", ()=>{
-  const btn = document.getElementById("fullscreenBtn")
-  if(!btn) return
-  btn.textContent = document.fullscreenElement ? "✕" : "⛶"
-  btn.title = document.fullscreenElement ? "Vollbild beenden" : "Vollbild"
-})
 
-/* DRAG & DROP */
-function initDrag(){
-  document.querySelectorAll(".bereich, .zufahrt").forEach(area=>{
-    area.addEventListener("dragover", e=>e.preventDefault())
-    area.addEventListener("drop", e=>{
-      e.preventDefault()
-      if(!dragged) return
-      let drop = area.querySelector(".drop")
-      if(drop){
-        drop.appendChild(dragged)
-        sortVehicles(drop)
-      }else{
-        area.appendChild(dragged)
-      }
-      const itemName = dragged.dataset.fkName || dragged.children[2]?.innerText || dragged.children[1]?.innerText || "Element"
-      const ziel = area.querySelector(".bheader")?.innerText || area.querySelector(".abschnittName")?.value || (area.id==="zufahrt" ? "Zufahrt" : "Unbekannt")
-      logEvent(itemName + " verschoben nach: " + ziel)
-      updatePatients()
-      saveState()
-    })
-  })
-}
-
-/* FAHRZEUG MENU */
-function openVehicleMenu(){
-  closePopup()
-  vehicleHotkeysActive = true
-  document.getElementById("vehiclePopup").style.display="flex"
-}
-function closeVehicleMenu(){
-  vehicleHotkeysActive = false
-  document.getElementById("vehiclePopup").style.display="none"
-}
-
-/* FUEHRUNGSKRAFT MENU */
-function openFuehrungskraftMenu(){
-  closePopup()
-  document.getElementById("fuehrungskraftPopup").style.display="flex"
-}
-function closeFuehrungskraftMenu(){
-  document.getElementById("fuehrungskraftPopup").style.display="none"
-}
-function createFuehrungskraft(typ){
-  closeFuehrungskraftMenu()
-  openNamePopup(typ + " – Name (optional)", "", function(name){
-    name = name || ""
-    const fk = document.createElement("div")
-    fk.className = "fuehrungskraft"
-    fk.draggable = true
-    fk.dataset.id = Date.now() + Math.random()
-    fk.dataset.fkName = name ? (typ + " " + name) : typ
-    fk.innerHTML = '<div class="deleteFk">X</div><div class="fkTyp">' + typ + '</div>' + (name ? '<div class="fkName">' + name + '</div>' : '')
-    fk.querySelector(".deleteFk").onclick = (e) => {
-      e.stopPropagation()
-      logEvent("Fuehrungskraft entfernt: " + fk.dataset.fkName)
-      fk.remove()
-      saveState()
-    }
-    fk.addEventListener("dragstart", ()=>{ dragged = fk })
-    logEvent("Fuehrungskraft erstellt: " + fk.dataset.fkName)
-    document.getElementById("zufahrt").appendChild(fk)
-    saveState()
-  }, true) // optional = true
-}
-
-/* EIGENES NAME-POPUP statt prompt() – verhindert Vollbild-Abbruch */
-let _namePopupCallback = null
-let _namePopupOptional = false
-
-function openNamePopup(title, placeholder, callback, optional){
-  _namePopupCallback = callback
-  _namePopupOptional = optional || false
-  const popup = document.getElementById("namePopup")
-  document.getElementById("namePopupTitle").textContent = title
-  const input = document.getElementById("namePopupInput")
-  input.value = ""
-  input.placeholder = optional ? "(optional, Enter zum Ueberspringen)" : placeholder
-  popup.style.display = "flex"
-  setTimeout(()=>input.focus(), 50)
-}
-
-function namePopupConfirm(){
-  const val = document.getElementById("namePopupInput").value.trim()
-  if(!_namePopupOptional && !val) return
-  document.getElementById("namePopup").style.display = "none"
-  if(_namePopupCallback) _namePopupCallback(val)
-  _namePopupCallback = null
-}
-
-function namePopupCancel(){
-  document.getElementById("namePopup").style.display = "none"
-  _namePopupCallback = null
-}
-
-document.addEventListener("DOMContentLoaded", ()=>{
-  document.getElementById("namePopupInput")?.addEventListener("keydown", (e)=>{
-    if(e.key === "Enter"){ e.preventDefault(); namePopupConfirm() }
-    if(e.key === "Escape"){ e.preventDefault(); namePopupCancel() }
-  })
-})
-
-/* FAHRZEUG ERSTELLEN */
-function createVehicle(type){
-  closeVehicleMenu()
-  openNamePopup(type + " Kennung eingeben", "", function(name){
-    if(!name || !name.trim()) return
-    name = name.trim()
-    let v = document.createElement("div")
-    v.className = "vehicle " + type
-    v.draggable = true
-    v.dataset.id = Date.now() + Math.random()
-    v.innerHTML = '<div class="deleteVehicle">X</div><div>' + type + '</div><div>' + name + '</div>'
-    v.querySelector(".deleteVehicle").onclick = (e) => {
-      e.stopPropagation()
-      delete fahrzeugLog[v.dataset.id]
-      logEvent("Fahrzeug geloescht: " + name)
-      v.remove()
-      updatePatients()
-      saveState()
-    }
-    v.addEventListener("dragstart", ()=>{ dragged = v })
-    v.onclick = (e) => {
-      if(e.target.classList.contains("patBadge") || e.target.classList.contains("deleteVehicle")) return
-      v.classList.toggle("active")
-      const fLog = fahrzeugLog[v.dataset.id]
-      if(v.classList.contains("active")){
-        if(fLog){ fLog.eingetroffen = new Date().toLocaleTimeString(); fLog.aktiv = true }
-        logEvent("Fahrzeug eingetroffen: " + name)
-      }else{
-        if(fLog) fLog.aktiv = false
-        logEvent("Fahrzeug Einsatz beendet: " + name)
-      }
-      saveState()
-    }
-    document.getElementById("zufahrt").appendChild(v)
-    sortVehicles(document.getElementById("zufahrt"))
-    fahrzeugLog[v.dataset.id] = { name, type, zeit: new Date().toLocaleTimeString(), aktiv: false }
-    logEvent("Fahrzeug erstellt: " + type + " " + name)
-    updatePatients()
-    saveState()
-  }, false) // optional = false, Eingabe pflicht
-}
-
-/* SEG BUTTONS */
-function initSEG(){
-  document.querySelectorAll(".seg").forEach(btn=>{
-    btn.onclick=()=>{
-      btn.classList.toggle("active")
-      const text = btn.innerText.trim()
-      logEvent(btn.classList.contains("active") ? "SEG aktiviert: " + text : "SEG deaktiviert: " + text)
-      saveState()
-    }
-  })
-  document.querySelectorAll(".unit").forEach(h=>{
-    h.onclick=()=>{
-      h.classList.toggle("active")
-      const text = h.innerText.trim()
-      logEvent(h.classList.contains("active") ? "Bereich aktiviert: " + text : "Bereich deaktiviert: " + text)
-      saveState()
-    }
-  })
-}
-
-/* HALTEPLATZ */
-function createHalteplatz(){
-  halteplatzCount++
-  let hp = document.createElement("div")
-  hp.className = "bereich"
-  hp.innerHTML = '<div class="deleteHP">X</div><div class="bheader">Halteplatz ' + halteplatzCount + '</div><input class="adressfeld" placeholder="Adresse / Standort\u2026"><div class="drop"></div>'
-  hp.querySelector(".deleteHP").onclick = (e) => {
-    e.stopPropagation()
-    retteZuZufahrt(hp)
-    hp.remove()
-    logEvent("Halteplatz geloescht")
-    saveState()
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: #141720;
+    border-bottom: 3px solid #e63946;
+    border-radius: 8px;
+    margin-bottom: 12px;
   }
-  document.getElementById("halteplaetze").appendChild(hp)
-  logEvent("Halteplatz erstellt: Halteplatz " + halteplatzCount)
-  initDrag()
-  saveState()
-}
 
-/* EINSATZABSCHNITT */
-function createAbschnitt(){
-  abschnittCount++
-  const ab = document.createElement("div")
-  ab.className = "bereich abschnitt"
-  ab.innerHTML =
-    '<div class="deleteHP">X</div>' +
-    '<div class="abschnittHeader"><input class="abschnittName" value="Abschnitt ' + abschnittCount + '" placeholder="Abschnitt benennen\u2026"></div>' +
-    '<input class="adressfeld" placeholder="Adresse / Standort\u2026">' +
-    '<div class="drop"></div>'
-  ab.querySelector(".deleteHP").onclick = (e) => {
-    e.stopPropagation()
-    retteZuZufahrt(ab)
-    logEvent("Abschnitt geloescht")
-    ab.remove()
-    saveState()
+  header h1 {
+    font-size: clamp(14px, 3vw, 20px);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #e8ecf4;
   }
-  document.getElementById("abschnitteContainer").appendChild(ab)
-  logEvent("Abschnitt erstellt: Abschnitt " + abschnittCount)
-  initDrag()
-  saveState()
-}
 
-/* VORSICHTUNG */
-function createVorsichtung(){
-  if(document.getElementById("vorsichtung")) return
-  let v = document.createElement("div")
-  v.className = "bereich"
-  v.id = "vorsichtung"
-  v.innerHTML = '<div class="deleteHP">X</div><div class="bheader unit">Vorsichtung</div><div class="patients" data-unit="VORSICHT">0</div><input class="adressfeld" placeholder="Adresse / Standort\u2026"><div class="drop"></div>'
-  v.querySelector(".deleteHP").onclick = (e) => {
-    e.stopPropagation()
-    retteZuZufahrt(v)
-    v.remove()
-    logEvent("Vorsichtung geloescht")
-    updateDashboard()
-    saveState()
+  #status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #4a5268;
+    text-align: right;
   }
-  document.getElementById("vorsichtungContainer").appendChild(v)
-  logEvent("Vorsichtung erstellt")
-  initDrag(); initPatients(); initSEG()
-  updateDashboard(); saveState()
-}
 
-/* PSS */
-function createPSS(){
-  if(document.getElementById("pss")) return
-  let p = document.createElement("div")
-  p.className = "bereich"
-  p.id = "pss"
-  p.innerHTML = '<div class="deleteHP">X</div><div class="bheader unit">Patientensammelstelle</div><div class="patients" data-unit="PSS">0</div><input class="adressfeld" placeholder="Adresse / Standort\u2026"><div class="drop"></div>'
-  p.querySelector(".deleteHP").onclick = (e) => {
-    e.stopPropagation()
-    retteZuZufahrt(p)
-    p.remove()
-    logEvent("PSS geloescht")
-    updateDashboard(); saveState()
+  #status.online { color: #2ec4b6; }
+  #status.offline { color: #e63946; }
+
+  #alarmBanner {
+    display: none;
+    background: rgba(230,57,70,0.15);
+    border: 2px solid #e63946;
+    border-radius: 8px;
+    padding: 12px 18px;
+    text-align: center;
+    font-size: clamp(16px, 4vw, 24px);
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #e63946;
+    margin-bottom: 12px;
+    animation: pulse 2s ease-in-out infinite;
   }
-  document.getElementById("pssContainer").appendChild(p)
-  logEvent("PSS erstellt")
-  initDrag(); initPatients(); initSEG()
-  updateDashboard(); saveState()
-}
-
-/* BER */
-function createBER(){
-  if(document.getElementById("ber")) return
-  const ber = document.createElement("div")
-  ber.className = "bereich blue"
-  ber.id = "ber"
-  ber.innerHTML = '<div class="deleteHP">X</div><div class="bheader unit">BER \u2013 Bereitstellungsraum</div><div class="patients" data-unit="BER">0</div><input class="adressfeld" placeholder="Adresse / Standort\u2026"><div class="drop"></div>'
-  ber.querySelector(".deleteHP").onclick = (e) => {
-    e.stopPropagation()
-    retteZuZufahrt(ber)
-    ber.remove()
-    logEvent("BER geloescht")
-    updateDashboard(); saveState()
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(230,57,70,0.3); }
+    50% { box-shadow: 0 0 20px rgba(230,57,70,0.5); }
   }
-  document.getElementById("berContainer").appendChild(ber)
-  logEvent("BER erstellt")
-  initDrag(); initPatients(); initSEG()
-  updateDashboard(); saveState()
-}
 
-/* FUNK */
-function initEnter(){
-  function handleEnter(e){ if(e.key==="Enter"){ e.preventDefault(); sendFunk() } }
-  document.getElementById("funkVon")?.addEventListener("keydown",handleEnter)
-  document.getElementById("funkAn")?.addEventListener("keydown",handleEnter)
-  document.getElementById("funkText")?.addEventListener("keydown",handleEnter)
-}
-function sendFunk(){
-  let von=document.getElementById("funkVon").value
-  let an=document.getElementById("funkAn").value
-  let text=document.getElementById("funkText").value
-  if(text==="") return
-  let time=new Date().toLocaleTimeString()
-  let line=document.createElement("div")
-  line.innerText=time+" | "+von+" \u2192 "+an+": "+text
-  document.getElementById("log").prepend(line)
-  logEvent("Funkspruch: "+von+" -> "+an+": "+text)
-  document.getElementById("funkText").value=""
-  document.getElementById("funkVon").value=""
-  document.getElementById("funkAn").value=""
-  saveState()
-}
-
-/* PATIENTEN */
-function initPatients(){
-  document.querySelectorAll(".patients").forEach(el=>{
-    el.onclick=(e)=>{
-      e.stopPropagation()
-      currentPatientBox=el
-      document.getElementById("patientInput").value=""
-      document.getElementById("patientPopup").style.display="flex"
-    }
-  })
-}
-function closePopup(){
-  document.getElementById("patientPopup").style.display="none"
-  document.getElementById("vehiclePopup").style.display="none"
-  const fp=document.getElementById("fuehrungskraftPopup")
-  if(fp) fp.style.display="none"
-  vehicleHotkeysActive=false
-  let box=document.getElementById("vehicleSelectBox")
-  if(box) box.style.display="none"
-  resetSichtungUI()
-}
-function patientAction(action){
-  const amount=parseInt(document.getElementById("patientInput").value)
-  if(!amount) return
-  if(!currentPatientBox) return
-  if(!currentPatientBox.classList.contains("patBadge")){
-    let currentManual=parseInt(currentPatientBox.dataset.manual||"0")||0
-    if(action==="add"){
-      currentPatientBox.dataset.manual=currentManual+amount
-      totalPatients+=amount
-      if(currentSichtung){
-        sichtungCounts[currentSichtung]=(sichtungCounts[currentSichtung]||0)+amount
-        currentPatientBox.dataset.sichtung=currentSichtung
-        logEvent("Patienten angelegt: "+amount+" ("+currentSichtung+")")
-      }else{ logEvent("Patienten angelegt: "+amount) }
-    }else if(action==="DELETE"){
-      let d=Math.min(amount,currentManual)
-      currentPatientBox.dataset.manual=currentManual-d
-      totalPatients=Math.max(0,totalPatients-d)
-      const ds=currentPatientBox.dataset.sichtung
-      if(ds&&sichtungCounts[ds]) sichtungCounts[ds]=Math.max(0,sichtungCounts[ds]-d)
-      logEvent("Patienten geloescht: "+d)
-    }else if(action==="remove"||action==="RUECK"){
-      currentPatientBox.dataset.manual=Math.max(0,currentManual-amount)
-      logEvent(action==="RUECK"?"Patienten Rueckfuehrung: "+amount:"Patienten entfernt: "+amount)
-    }else{
-      if(currentManual<amount) return
-      currentPatientBox.dataset.manual=currentManual-amount
-      document.querySelectorAll(".patients").forEach(p=>{
-        if(p.dataset.unit===action){ p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount }
-      })
-      logEvent("Patienten umverteilt -> "+action+": "+amount)
-    }
-  }else{
-    let current=parseInt(currentPatientBox.innerText)||0
-    if(action==="remove"||action==="RUECK"){
-      let nv=Math.max(0,current-amount)
-      if(nv===0){ currentPatientBox.remove() }else{ currentPatientBox.innerText=nv }
-      logEvent(action==="RUECK"?"Patienten Rueckfuehrung vom Fahrzeug: "+amount:"Patienten vom Fahrzeug entfernt: "+amount)
-    }else if(action==="EVAK"||action==="21"||action==="22"||action==="TRANSPORT"){
-      if(current<amount) return
-      currentPatientBox.innerText=current-amount
-      if((parseInt(currentPatientBox.innerText)||0)===0) currentPatientBox.remove()
-      document.querySelectorAll(".patients").forEach(p=>{
-        if(p.dataset.unit===action){ p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount }
-      })
-      logEvent("Patienten vom Fahrzeug umverteilt -> "+action+": "+amount)
-    }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
   }
-  updatePatients(); closePopup(); saveState()
-}
-function openPatientMenu(){
-  const zufahrtBox=document.querySelector('.patients[data-unit="ZUFAHRT"]')
-  currentPatientBox=zufahrtBox
-  document.getElementById("patientInput").value=""
-  closePopup()
-  document.getElementById("patientPopup").style.display="flex"
-}
-function toggleVehicleSelect(){
-  let box=document.getElementById("vehicleSelectBox")
-  box.style.display=box.style.display==="none"?"block":"none"
-  let select=document.getElementById("vehicleSelect")
-  select.innerHTML=""
-  document.querySelectorAll(".vehicle").forEach(v=>{
-    let name=v.children[2]?.innerText||v.children[1]?.innerText||"Fahrzeug"
-    let option=document.createElement("option")
-    option.value=v.dataset.id; option.text=name
-    select.appendChild(option)
-  })
-}
-function assignPatientsToVehicle(){
-  let amount=parseInt(document.getElementById("patientInput").value)
-  if(!amount||!currentPatientBox) return
-  if(!currentPatientBox.classList.contains("patBadge")){
-    let cm=parseInt(currentPatientBox.dataset.manual||"0")||0
-    if(cm<amount) return
-    currentPatientBox.dataset.manual=cm-amount
-  }else{
-    let c=parseInt(currentPatientBox.innerText)||0
-    if(c<amount) return
-    let nv=c-amount
-    if(nv===0){ currentPatientBox.remove() }else{ currentPatientBox.innerText=nv }
+
+  @media(min-width: 600px){
+    .grid { grid-template-columns: 1fr 1fr 1fr; }
   }
-  let id=document.getElementById("vehicleSelect").value
-  let vehicle=document.querySelector('[data-id="'+id+'"]')
-  if(!vehicle) return
-  let badge=vehicle.querySelector(".patBadge")
-  if(!badge){
-    badge=document.createElement("div")
-    badge.className="patBadge"
-    badge.onclick=(e)=>{ e.stopPropagation(); currentPatientBox=badge; document.getElementById("patientInput").value=""; document.getElementById("patientPopup").style.display="flex" }
-    vehicle.appendChild(badge)
+
+  .card {
+    background: #1a1f2e;
+    border: 1.5px solid #2a3048;
+    border-radius: 8px;
+    padding: 12px 14px;
   }
-  badge.innerText=(parseInt(badge.innerText)||0)+amount
-  logEvent("Patienten auf Fahrzeug "+(vehicle.children[2]?.innerText||"Fahrzeug")+": "+amount)
-  updatePatients(); closePopup(); saveState()
-}
-function updatePatients(){
-  document.querySelectorAll(".patients").forEach(field=>{
-    let manual=parseInt(field.dataset.manual||"0")||0
-    let vehicleTotal=0
-    let unit=field.dataset.unit
-    if(unit==="ZUFAHRT"){
-      document.querySelectorAll("#zufahrt .vehicle").forEach(v=>{ let b=v.querySelector(".patBadge"); if(b) vehicleTotal+=parseInt(b.innerText)||0 })
-    }else{
-      field.parentElement.querySelectorAll(".vehicle").forEach(v=>{ let b=v.querySelector(".patBadge"); if(b) vehicleTotal+=parseInt(b.innerText)||0 })
-    }
-    let total=manual+vehicleTotal
-    field.innerText=total
-    if(unit==="ZUFAHRT") field.style.display=total===0?"none":"block"
-  })
-  updateDashboard()
-}
 
-/* SICHERHEIT: Fahrzeuge/FK bei Bereich-Loeschen zurueck in Zufahrt */
-function retteZuZufahrt(bereich){
-  const zufahrt = document.getElementById("zufahrt")
-  if(!zufahrt) return
-  const items = bereich.querySelectorAll(".vehicle, .fuehrungskraft")
-  if(items.length === 0) return
-  items.forEach(item => {
-    const name = item.classList.contains("fuehrungskraft")
-      ? (item.querySelector(".fkTyp")?.innerText || "FK")
-      : (item.children[2]?.innerText || "Fahrzeug")
-    zufahrt.appendChild(item)
-    logEvent(name + " -> Zufahrt gerettet")
-  })
-  sortVehicles(zufahrt)
-  updatePatients()
-}
+  .card-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #4895ef;
+    border-bottom: 1.5px solid #2a3048;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+  }
 
-function sortVehicles(container){
-  let items = [...container.querySelectorAll(".vehicle, .fuehrungskraft")]
-  items.sort((a, b) => {
-    const aFK = a.classList.contains("fuehrungskraft") ? 0 : 1
-    const bFK = b.classList.contains("fuehrungskraft") ? 0 : 1
-    if(aFK !== bFK) return aFK - bFK
-    const nA = (a.querySelector(".fkTyp") || a.children[2])?.innerText || ""
-    const nB = (b.querySelector(".fkTyp") || b.children[2])?.innerText || ""
-    return nA.localeCompare(nB)
-  })
-  items.forEach(v => container.appendChild(v))
-}
+  .card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    font-size: clamp(13px, 2.5vw, 16px);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
 
-/* DASHBOARD */
-function updateDashboard(){
-  const rtw=document.querySelectorAll(".vehicle.RTW").length
-  const ktw=document.querySelectorAll(".vehicle.KTW").length
-  const nef=document.querySelectorAll(".vehicle.NEF").length
-  const fisu=document.querySelectorAll(".vehicle.FISU").length
-  const nah=document.querySelectorAll(".vehicle.NAH").length
-  const totalVehicles=document.querySelectorAll(".vehicle").length
+  .card-row:last-child { border-bottom: none; }
 
-  // Alarmstufe Banner – nutzt das fest im HTML verankerte Element
+  .val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(14px, 2.8vw, 18px);
+    font-weight: 700;
+    color: #e8ecf4;
+  }
+
+  .val.big {
+    font-size: clamp(22px, 5vw, 36px);
+    color: #f4d35e;
+  }
+
+  .sk1 { color: #e63946; font-weight: 700; }
+  .sk2 { color: #f4a261; font-weight: 700; }
+  .sk3 { color: #2ec4b6; font-weight: 700; }
+  .sk4 { color: #4a5268; }
+
+  #timer-display {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(28px, 7vw, 52px);
+    color: #2ec4b6;
+    letter-spacing: 4px;
+    text-align: center;
+    padding: 10px;
+    text-shadow: 0 0 20px rgba(46,196,182,0.4);
+  }
+
+  #bereiche-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .bereich-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: #141720;
+    border-radius: 5px;
+    font-size: clamp(12px, 2.2vw, 15px);
+  }
+
+  .bereich-row .bval {
+    font-family: 'Share Tech Mono', monospace;
+    font-weight: 700;
+    color: #f4d35e;
+  }
+
+  #no-data {
+    text-align: center;
+    padding: 40px;
+    color: #4a5268;
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+
+  #main { display: none; }
+
+  .seg-badge {
+    background: rgba(46,196,182,0.15);
+    border: 1.5px solid #2ec4b6;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: clamp(13px, 2.5vw, 16px);
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #2ec4b6;
+    text-transform: uppercase;
+  }
+
+  footer {
+    text-align: center;
+    color: #2a3048;
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin-top: 14px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div style="font-size:9px;letter-spacing:2px;color:#4a5268;text-transform:uppercase">Berufsrettung Wien · MA 70</div>
+    <h1>SEG-10 Live</h1>
+  </div>
+  <div id="status">● Verbinde…</div>
+</header>
+
+<div id="alarmBanner"></div>
+
+<div id="no-data">Warte auf Daten vom SEG-10…</div>
+
+<div id="main">
+
+  <div style="text-align:center;margin-bottom:10px">
+    <div style="font-size:10px;letter-spacing:2px;color:#4a5268;text-transform:uppercase;margin-bottom:4px">Einsatzzeit</div>
+    <div id="timer-display">00:00:00</div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-title">Fahrzeuge</div>
+      <div class="card-row"><span>RTW</span><span class="val" id="d-rtw">0</span></div>
+      <div class="card-row"><span>KTW</span><span class="val" id="d-ktw">0</span></div>
+      <div class="card-row"><span>NEF</span><span class="val" id="d-nef">0</span></div>
+      <div class="card-row"><span>FISU</span><span class="val" id="d-fisu">0</span></div>
+      <div class="card-row"><span>NAH</span><span class="val" id="d-nah">0</span></div>
+      <div class="card-row"><span>FK</span><span class="val" id="d-fk">0</span></div>
+      <div class="card-row" style="margin-top:4px;border-top:1px solid #2a3048;padding-top:6px">
+        <span style="font-weight:700">Gesamt</span>
+        <span class="val big" id="d-total">0</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Patienten</div>
+      <div class="card-row"><span>Gesamt</span><span class="val big" id="d-pat-gesamt">0</span></div>
+      <div class="card-row"><span class="sk1">SK1 Sofort</span><span class="val sk1" id="d-sk1">0</span></div>
+      <div class="card-row"><span class="sk2">SK2 Dringend</span><span class="val sk2" id="d-sk2">0</span></div>
+      <div class="card-row"><span class="sk3">SK3 Leicht</span><span class="val sk3" id="d-sk3">0</span></div>
+      <div class="card-row"><span class="sk4">SK4</span><span class="val sk4" id="d-sk4">0</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Bereiche</div>
+      <div class="card-row"><span>PSS</span><span class="val" id="d-pss">–</span></div>
+      <div class="card-row"><span>Vorsichtung</span><span class="val" id="d-vor">–</span></div>
+      <div class="card-row"><span>BER</span><span class="val" id="d-ber">–</span></div>
+      <div class="card-row"><span>SEG-21</span><span class="val" id="d-s21">0</span></div>
+      <div class="card-row"><span>SEG-22</span><span class="val" id="d-s22">0</span></div>
+      <div class="card-row"><span>EVAK</span><span class="val" id="d-evak">0</span></div>
+      <div class="card-row"><span>Transport</span><span class="val" id="d-transport">0</span></div>
+    </div>
+
+  </div>
+
+  <div class="card" id="bereiche-card" style="display:none;margin-bottom:10px">
+    <div class="card-title">Halteplätze &amp; Abschnitte</div>
+    <div id="bereiche-list"></div>
+  </div>
+
+  <div class="card" id="seg-card" style="display:none;margin-bottom:10px">
+    <div class="card-title">⚡ SEG Einheiten vor Ort</div>
+    <div id="seg-list" style="display:flex;flex-wrap:wrap;gap:8px;padding-top:4px"></div>
+  </div>
+
+</div>
+
+<footer>LETZTE AKTUALISIERUNG: <span id="lastUpdate">–</span></footer>
+
+<script>
+// =============================================
+// FIREBASE URL hier eintragen (gleiche wie in app.js)
+// =============================================
+const FIREBASE_URL = "https://seg-10-dashboard-default-rtdb.europe-west1.firebasedatabase.app"
+
+const statusEl = document.getElementById("status")
+
+function updateUI(data){
+  if(!data){ return }
+
+  document.getElementById("no-data").style.display = "none"
+  document.getElementById("main").style.display = "block"
+
+  // Alarm
   const banner = document.getElementById("alarmBanner")
-  if(banner){
-    if(aktiveAlarmstufe !== null && alarmstufen[aktiveAlarmstufe]){
-      const stufe = alarmstufen[aktiveAlarmstufe]
-      banner.style.display = "block"
-      banner.innerHTML = "&#9889; ALARMSTUFE "+(aktiveAlarmstufe+1)+" – "+(stufe.titel || "Alarmstufe "+(aktiveAlarmstufe+1))
-    } else {
-      banner.style.display = "none"
-    }
+  if(data.alarm){
+    banner.style.display = "block"
+    banner.textContent = "⚡ " + data.alarm
+  } else {
+    banner.style.display = "none"
   }
 
-  let vEl=document.getElementById("dashVehicles")
-  let vContent=vEl.querySelector(".dashVehiclesContent")
-  if(!vContent){ vContent=document.createElement("div"); vContent.className="dashVehiclesContent"; vEl.appendChild(vContent) }
-  const totalFK = document.querySelectorAll(".fuehrungskraft").length
-  vContent.innerHTML="RTW: "+rtw+"<br>KTW: "+ktw+"<br>NEF: "+nef+"<br>FISU: "+fisu+"<br>NAH: "+nah+"<br>Fzg. Gesamt: <strong>"+totalVehicles+"</strong><br>FK Einheiten: <strong>"+totalFK+"</strong>"
+  // Timer
+  document.getElementById("timer-display").textContent = data.timer || "00:00:00"
 
-  function vu(unit){ const b=document.querySelector('[data-unit="'+unit+'"]'); return b?b.parentElement.querySelectorAll(".vehicle").length:0 }
-  let segRows="<b>Fzg. nach Bereich</b><br>SEG-21: "+vu("21")+"<br>SEG-22: "+vu("22")+"<br>EVAK: "+vu("EVAK")+"<br>Transport: "+vu("TRANSPORT")
-  document.querySelectorAll("#halteplaetze .bereich").forEach(hp=>{
-    const label=hp.querySelector(".bheader")?.innerText||"HP"
-    segRows+="<br>"+label+": "+hp.querySelectorAll(".vehicle").length
-  })
-  document.querySelectorAll("#abschnitteContainer .abschnitt").forEach(ab=>{
-    const label=ab.querySelector("[contenteditable]")?.innerText||"Abschnitt"
-    segRows+="<br>"+label+": "+ab.querySelectorAll(".vehicle, .fuehrungskraft").length
-  })
-  document.getElementById("dashSEG").innerHTML=segRows
+  // Fahrzeuge
+  const f = data.fahrzeuge || {}
+  document.getElementById("d-rtw").textContent   = f.rtw   || 0
+  document.getElementById("d-ktw").textContent   = f.ktw   || 0
+  document.getElementById("d-nef").textContent   = f.nef   || 0
+  document.getElementById("d-fisu").textContent  = f.fisu  || 0
+  document.getElementById("d-nah").textContent   = f.nah   || 0
+  document.getElementById("d-fk").textContent    = f.fk    || 0
+  document.getElementById("d-total").textContent = f.gesamt || 0
 
-  function pu(unit){ const el=document.querySelector('[data-unit="'+unit+'"]'); return el?(parseInt(el.innerText)||0):null }
-  let patRows="<b>Patienten</b><br>Gesamt: <strong>"+totalPatients+"</strong>"
-  const pPSS=pu("PSS"); if(pPSS!==null) patRows+="<br>PSS: "+pPSS
-  const pVor=pu("VORSICHT"); if(pVor!==null) patRows+="<br>Vorsichtung: "+pVor
-  const pBER=pu("BER"); if(pBER!==null) patRows+="<br>BER: "+pBER
-  patRows+="<br>SEG-21: "+(pu("21")??0)+"<br>SEG-22: "+(pu("22")??0)+"<br>EVAK: "+(pu("EVAK")??0)+"<br>Transport: "+(pu("TRANSPORT")??0)
-  patRows+='<br><span class="dash-sk1">SK1: '+sichtungCounts.SK1+'</span>'
-  patRows+='<br><span class="dash-sk2">SK2: '+sichtungCounts.SK2+'</span>'
-  patRows+='<br><span class="dash-sk3">SK3: '+sichtungCounts.SK3+'</span>'
-  patRows+='<br><span class="dash-sk4">SK4: '+sichtungCounts.SK4+'</span>'
-  document.getElementById("dashPatients").innerHTML=patRows
-  syncToFirebase()
-}
+  // Patienten
+  const p = data.patienten || {}
+  document.getElementById("d-pat-gesamt").textContent = p.gesamt || 0
+  document.getElementById("d-sk1").textContent = p.sk1 || 0
+  document.getElementById("d-sk2").textContent = p.sk2 || 0
+  document.getElementById("d-sk3").textContent = p.sk3 || 0
+  document.getElementById("d-sk4").textContent = p.sk4 || 0
+  document.getElementById("d-pss").textContent       = p.pss       !== undefined ? p.pss       : "–"
+  document.getElementById("d-vor").textContent       = p.vorsichtung !== undefined ? p.vorsichtung : "–"
+  document.getElementById("d-ber").textContent       = p.ber       !== undefined ? p.ber       : "–"
+  document.getElementById("d-s21").textContent       = p.seg21     || 0
+  document.getElementById("d-s22").textContent       = p.seg22     || 0
+  document.getElementById("d-evak").textContent      = p.evak      || 0
+  document.getElementById("d-transport").textContent = p.transport || 0
 
-
-/* =========================================================
-   FIREBASE LIVE-SYNC
-   Schreibt bei jeder Änderung die Dashboard-Daten ins Firebase.
-   FIREBASE_CONFIG wird vom Benutzer einmalig eingetragen.
-========================================================= */
-
-// Diese Zeile einmalig mit deinen Firebase-Daten befüllen (siehe Anleitung)
-const FIREBASE_URL = "" // z.B. "https://seg10-xxxxx-default-rtdb.europe-west1.firebasedatabase.app"
-
-function syncToFirebase(){
-  if(!FIREBASE_URL) return // Kein Firebase konfiguriert
-
-  const rtw  = document.querySelectorAll(".vehicle.RTW").length
-  const ktw  = document.querySelectorAll(".vehicle.KTW").length
-  const nef  = document.querySelectorAll(".vehicle.NEF").length
-  const fisu = document.querySelectorAll(".vehicle.FISU").length
-  const nah  = document.querySelectorAll(".vehicle.NAH").length
-  const fk   = document.querySelectorAll(".fuehrungskraft").length
-
-  function pu(unit){ const el=document.querySelector('[data-unit="'+unit+'"]'); return el?(parseInt(el.innerText)||0):0 }
-
-  // Bereiche sammeln
-  const bereiche = []
-  document.querySelectorAll("#halteplaetze .bereich").forEach(hp=>{
-    bereiche.push({ name: hp.querySelector(".bheader")?.innerText||"HP", fzg: hp.querySelectorAll(".vehicle").length })
-  })
-  document.querySelectorAll("#abschnitteContainer .abschnitt").forEach(ab=>{
-    const name = ab.querySelector(".abschnittName")?.value || "Abschnitt"
-    bereiche.push({ name, fzg: ab.querySelectorAll(".vehicle, .fuehrungskraft").length })
-  })
-
-  const alarmstufeText = (aktiveAlarmstufe !== null && alarmstufen[aktiveAlarmstufe])
-    ? "ALARMSTUFE " + (aktiveAlarmstufe+1) + " – " + alarmstufen[aktiveAlarmstufe].titel
-    : ""
-
-  // Aktive SEG-Einheiten (grün markierte Buttons)
-  const segVorOrt = []
-  document.querySelectorAll(".seg.active").forEach(btn => {
-    segVorOrt.push(btn.innerText.trim())
-  })
-
-  const data = {
-    ts: new Date().toISOString(),
-    alarm: alarmstufeText,
-    fahrzeuge: { rtw, ktw, nef, fisu, nah, gesamt: rtw+ktw+nef+fisu+nah, fk },
-    patienten: {
-      gesamt: totalPatients,
-      sk1: sichtungCounts.SK1, sk2: sichtungCounts.SK2,
-      sk3: sichtungCounts.SK3, sk4: sichtungCounts.SK4,
-      pss: pu("PSS"), vorsichtung: pu("VORSICHT"), ber: pu("BER"),
-      seg21: pu("21"), seg22: pu("22"), evak: pu("EVAK"), transport: pu("TRANSPORT")
-    },
-    bereiche,
-    segVorOrt,
-    einsatzAktiv,
-    timer: document.getElementById("timer")?.innerText || "00:00:00"
+  // Halteplätze & Abschnitte
+  const bereiche = data.bereiche || []
+  const card = document.getElementById("bereiche-card")
+  const list = document.getElementById("bereiche-list")
+  if(bereiche.length > 0){
+    card.style.display = "block"
+    list.innerHTML = bereiche.map(b =>
+      `<div class="bereich-row"><span>${b.name}</span><span class="bval">${b.fzg} Einh.</span></div>`
+    ).join("")
+  } else {
+    card.style.display = "none"
   }
 
-  fetch(FIREBASE_URL + "/dashboard.json", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  }).catch(()=>{}) // Fehler still ignorieren – kein Popup
-}
+  // SEG Einheiten vor Ort
+  const segCard = document.getElementById("seg-card")
+  const segList = document.getElementById("seg-list")
+  const segVorOrt = data.segVorOrt || []
+  if(segVorOrt.length > 0){
+    segCard.style.display = "block"
+    segList.innerHTML = segVorOrt.map(s =>
+      `<div class="seg-badge">✓ ${s}</div>`
+    ).join("")
+  } else {
+    segCard.style.display = "none"
+  }
 
-/* SAVE */
-function saveState(){
-  if(!einsatzAktiv||!einsatzDateiHandle) return
-  let data={ timestamp:new Date().toISOString(), log:eventLog, theme:document.documentElement.getAttribute("data-theme")||"light", sichtungCounts }
-  saveAlarmstufen(); data.alarmstufen=alarmstufen; data.html=document.body.innerHTML
-  writeFile(data)
-}
-async function writeFile(data){
-  try{
-    const writable=await einsatzDateiHandle.createWritable()
-    await writable.write(JSON.stringify(data,null,2))
-    await writable.close()
-    letzterAutosave=new Date(); updateAutosaveIndicator()
-  }catch(err){ console.error("Autosave Fehler",err) }
-}
-function updateAutosaveIndicator(){
-  const el=document.getElementById("autosaveIndicator")
-  if(!el) return
-  el.textContent="Autosave "+(letzterAutosave?letzterAutosave.toLocaleTimeString():"--:--")
-}
-
-/* EINSATZ */
-async function startEinsatz(){
-  try{
-    const fh=await window.showSaveFilePicker({ suggestedName:"einsatz_"+new Date().toISOString().slice(0,16).replace("T","_").replace(":","-")+".json", types:[{description:"JSON",accept:{"application/json":[".json"]}}] })
-    einsatzDateiHandle=fh; einsatzAktiv=true
-    logEvent("Einsatz gestartet"); startTimer()
-    autosaveTimer=setInterval(()=>saveState(),30000)
-  }catch(err){ console.log("Speichern abgebrochen") }
-}
-function endEinsatz(){
-  if(!confirm("Einsatz wirklich beenden?")) return
-  logEvent("Einsatz beendet"); saveState(); clearInterval(autosaveTimer); stopTimer(); einsatzAktiv=false
-}
-function startTimer(){
-  if(timerInterval) clearInterval(timerInterval)
-  einsatzStartZeit=Date.now()
-  timerInterval=setInterval(()=>{
-    let diff=Date.now()-einsatzStartZeit
-    let h=Math.floor(diff/3600000),m=Math.floor(diff/60000)%60,s=Math.floor(diff/1000)%60
-    const el=document.getElementById("timer")
-    if(el) el.innerText=String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")
-  },1000)
-}
-function stopTimer(){ clearInterval(timerInterval); timerInterval=null }
-
-/* RELOAD SCHUTZ */
-function initReloadProtection(){
-  window.addEventListener("keydown",function(e){
-    const isF5=e.key==="F5", isCtrlR=(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="r"
-    if(isF5||isCtrlR){
-      e.preventDefault(); e.stopPropagation()
-      if(confirm("Seite wirklich neu laden?\nAlle nicht gespeicherten Daten gehen verloren!")){
-        window.removeEventListener("keydown",arguments.callee); window.location.reload()
-      }
-    }
-  },true)
-  window.addEventListener("beforeunload",function(e){ e.preventDefault(); e.returnValue="Seite verlassen?" })
-}
-
-function logEvent(text){ eventLog.push(new Date().toLocaleTimeString()+" | "+text) }
-
-/* THEME */
-function toggleTheme(){
-  const html=document.documentElement
-  const isLight=html.getAttribute("data-theme")==="light"
-  html.setAttribute("data-theme",isLight?"dark":"light")
-  const btn=document.getElementById("themeBtn")
-  if(btn) btn.textContent=isLight?"\u2600":"\uD83C\uDF19"
-  saveState()
-}
-
-/* SICHTUNG */
-function setSichtung(cat){
-  currentSichtung=(currentSichtung===cat)?null:cat
-  document.querySelectorAll(".sichtBtn").forEach(b=>b.classList.remove("selected"))
-  const label=document.getElementById("sichtungLabel")
-  if(currentSichtung){
-    const btn=document.querySelector(".sichtBtn."+cat.toLowerCase())
-    if(btn) btn.classList.add("selected")
-    label.textContent=cat; label.className="sichtungLabel "+cat
-  }else{ label.textContent="\u2013"; label.className="sichtungLabel" }
-}
-function resetSichtungUI(){
-  currentSichtung=null
-  document.querySelectorAll(".sichtBtn").forEach(b=>b.classList.remove("selected"))
-  const label=document.getElementById("sichtungLabel")
-  if(label){ label.textContent="\u2013"; label.className="sichtungLabel" }
-}
-function sichtungSetzen(){
-  if(!currentSichtung){ alert("Bitte zuerst eine Sichtungskategorie auswaehlen."); return }
-  if(!currentPatientBox){ closePopup(); return }
-  const inputAmount=parseInt(document.getElementById("patientInput").value)
-  const bestand=parseInt(currentPatientBox.innerText)||0
-  const zuweisung=(!isNaN(inputAmount)&&inputAmount>0)?Math.min(inputAmount,bestand):bestand
-  if(zuweisung<=0){ alert("Keine Patienten vorhanden."); return }
-  sichtungCounts[currentSichtung]=(sichtungCounts[currentSichtung]||0)+zuweisung
-  logEvent("Sichtung zugewiesen: "+zuweisung+" Pat. -> "+currentSichtung)
-  updatePatients(); closePopup(); saveState()
-}
-
-/* ALARMSTUFEN – fix 5 Stufen, vorbelegt aus GSM-DFB */
-if(alarmstufen.length < 5){
-  alarmstufen = [
-    {
-      titel: "A1 – Kleinlage",
-      text: "RESSOURCEN:\n\u2022 SEG-3 (ersatzweise SEG-1)\n\u2022 SEG-10\n\u2022 SEG-21 oder SEG-22\n\u2022 2\u00d7 RTW\n\nFUNKKANAL: BRW-KAT-1\n\nEINSATZTAKTIK: Ein RTW als Bergebereitschaft/PSS, zweiter RTW im SEG-Bus. Geh\u00e4hige Patienten prim\u00e4r im SEG-Bus. SEG-10 als F\u00fchrungsunterst\u00fctzung.\n\nAUSRUFUNG gem\u00e4\u00df AO oder durch EL-RD auch auf Anfahrt."
-    },
-    {
-      titel: "A2 – Mittellage",
-      text: "RESSOURCEN:\n\u2022 SEG-1 (ersatzweise SEG-3), SEG-10\n\u2022 SEG-21 oder SEG-22, SEG-EVAK\n\u2022 MLS-Wien, ZTR-OA, SAN-Team HIO\n\u2022 2\u00d7 RTW, 2\u00d7 N-KTW, 1\u00d7 NEF\n\nFUNKKANAL: BRW-KAT-1\n\nMASSNAHMEN:\n\u2713 Gro\u00dfschadensprotokoll im Berufsrettungsportal\n\u2713 Vorverst\u00e4ndigung WIGEV Journaldienst\n\u2713 Alarmierung SAN-Team HIO\n\nEINSATZABSCHNITTE:\n1. Intervention (ZGKDT)\n2. Behandlung (erfahrene F\u00fchrungskraft)\n3. Transport (MLS Wien / QM Leitstelle)"
-    },
-    {
-      titel: "A3 – Gro\u00dflage / MANV",
-      text: "RESSOURCEN: SEG-1, SEG-3, SEG-10, SEG-21+22, SEG-EVAK, SEG-11+12, MLS-Wien, ZTR-OA, mind. 1\u00d7 FISU + RTW/N-KTW/NEF je MANV\n\nBHP-KAPAZIT\u00c4TEN:\n\u2022 SEG-21/22: je 25 Pl\u00e4tze (15\u00d7 SK3, 10\u00d7 SK1/SK2)\n\u2022 SEG-11/12: je 10 Pl\u00e4tze (SK1/SK2)\n\nMANV-STICHWORT (SK1+SK2):\nMANV-10: 5 RTW/NKTW, 2 NEF\nMANV-20: 9 RTW/NKTW, 3 NEF\nMANV-30: 13 RTW/NKTW, 4 NEF\nMANV-40: 17 RTW/NKTW, 5 NEF\nMANV-50: 21 RTW/NKTW, 6 NEF\nMANV-60: 25 RTW/NKTW, 7 NEF\n\nMASSNAHMEN: Gro\u00dfschadensprotokoll, Bettenabsprache SOP LS-33, Info Kommando MA70+MD-OS, Anforderung Transportressourcen SAN-Team HIO"
-    },
-    {
-      titel: "A4 – \u00dcbergro\u00dflage",
-      text: "AKTIVIERUNG wenn MA70-Behandlungskapazit\u00e4ten nicht ausreichen.\n\nZUS\u00c4TZLICHE BHP:\n\u2022 BF Wien AB Erg\u00e4nzungsmaterial (2\u00d7 MT-40, Wache Leopoldstadt)\n\u2022 Bis zu 5\u00d7 BHP 25 privater Rettungsorg. (je in 30-Min-Intervallen)\n\nMANV-STICHWORT A4:\nMANV-70: 29 RTW/NKTW, 8 NEF\nMANV-80: 33 RTW/NKTW, 9 NEF\nMANV-90: 37 RTW/NKTW, 10 NEF\nMANV-100: 41 RTW/NKTW, 11 NEF\nMANV-110: 45 RTW/NKTW, 12 NEF\n\nMASSNAHMEN: KTD auf Minimum, Ressourcen anderer Bundesl\u00e4nder, Nachbesetzung alle MA70-Ressourcen, Einberufung Einsatzstab MA70"
-    },
-    {
-      titel: "A5 – Sonderlage / Dauerlage",
-      text: "AKTIVIERUNG: Nur durch RDL oder Stellvertreter.\nF\u00fcr Eins\u00e4tze > 24h oder Sonderlagen mit erweiterter F\u00fchrungsstruktur.\n\nBESONDERHEITEN:\n\u2022 Einsatzf\u00fchrung aus dem Einsatzstab MA70 (nicht von vorne)\n\u2022 Gesamteinsatzleitung: RDL oder Beauftragter\n\u2022 Voller Zugriff auf alle Hilfseinheiten privater Org.\n\u2022 Ma\u00dfnahmen individuell zugeschnitten + dokumentieren\n\nKOMMUNIKATION:\nBRW-KAT-1 (bzw. KAT-2 bei Paralleleinsatz)\nSonderlagen SEG-Disponent: BRW-KAT-3"
-    }
-  ]
-}
-
-function openAlarmstufen(){
-  saveAlarmstufen()
-  renderAlarmstufen()
-  switchAlarmTab("info")
-  document.getElementById("alarmPopup").style.display="flex"
-}
-function closeAlarmPopup(){
-  saveAlarmstufen()
-  document.getElementById("alarmPopup").style.display="none"
-  saveState()
-}
-
-function saveAlarmstufen(){
-  const stufen=document.querySelectorAll(".alarmStufe")
-  stufen.forEach((s,i)=>{
-    if(alarmstufen[i]){
-      alarmstufen[i].titel = s.querySelector(".alarmTitel").value
-      alarmstufen[i].text  = s.querySelector("textarea").value
-    }
-  })
-}
-
-function renderAlarmstufen(){
-  const c=document.getElementById("alarmStufen"); if(!c) return
-  c.innerHTML=""
-  alarmstufen.forEach((stufe,i)=>{
-    const div=document.createElement("div")
-    div.className="alarmStufe"
-    div.innerHTML=`
-      <div style="font-size:var(--fs-xs,11px);font-weight:700;letter-spacing:2px;color:var(--accent-red);margin-bottom:5px;text-transform:uppercase">Stufe ${i+1}</div>
-      <input class="alarmTitel" placeholder="Bezeichnung (z.B. Kleinlage)" value="${stufe.titel.replace(/"/g,'&quot;')}">
-      <textarea placeholder="Kräfte und Maßnahmen…&#10;z.B. SEG-10, 3× RTW, 1× NEF">${stufe.text}</textarea>
-    `
-    c.appendChild(div)
-  })
-}
-
-function switchAlarmTab(tab){
-  document.querySelectorAll(".alarmTab").forEach(b=>b.classList.remove("active"))
-  document.getElementById("alarmTabInfo").style.display  = tab==="info"  ? "" : "none"
-  document.getElementById("alarmTabAktiv").style.display = tab==="aktiv" ? "" : "none"
-  if(tab==="info"){
-    document.querySelectorAll(".alarmTab")[0].classList.add("active")
-  }else{
-    saveAlarmstufen()
-    document.querySelectorAll(".alarmTab")[1].classList.add("active")
-    renderAlarmAuswahl()
+  // Zeitstempel
+  if(data.ts){
+    const d = new Date(data.ts)
+    document.getElementById("lastUpdate").textContent = d.toLocaleTimeString("de-AT")
   }
 }
 
-function renderAlarmAuswahl(){
-  const c=document.getElementById("alarmAuswahl"); if(!c) return
-  c.innerHTML=""
-  alarmstufen.forEach((stufe,i)=>{
-    const btn=document.createElement("button")
-    btn.className="alarmWahlBtn"+(aktiveAlarmstufe===i?" aktiv":"")
-    btn.innerHTML=`<div class="wahlTitel">Stufe ${i+1} – ${stufe.titel||"Alarmstufe "+(i+1)}</div>${stufe.text?`<div class="wahlText">${stufe.text}</div>`:""}`
-    btn.onclick=()=>{
-      aktiveAlarmstufe=(aktiveAlarmstufe===i)?null:i
-      renderAlarmAuswahl()
-      updateDashboard()
-      logEvent(aktiveAlarmstufe!==null
-        ?"Alarmstufe aktiviert: Stufe "+(i+1)+" – "+(stufe.titel||"")
-        :"Alarmstufe aufgehoben")
-      saveState()
-    }
-    c.appendChild(btn)
-  })
+async function fetchData(){
+  if(!FIREBASE_URL){
+    statusEl.textContent = "⚠ Keine Firebase URL"
+    statusEl.className = "offline"
+    return
+  }
+  try {
+    const res = await fetch(FIREBASE_URL + "/dashboard.json?t=" + Date.now())
+    if(!res.ok) throw new Error(res.status)
+    const data = await res.json()
+    updateUI(data)
+    statusEl.textContent = "● LIVE"
+    statusEl.className = "online"
+  } catch(e) {
+    statusEl.textContent = "● Keine Verbindung"
+    statusEl.className = "offline"
+  }
 }
 
-function alarmStufeDeaktivieren(){
-  aktiveAlarmstufe=null
-  renderAlarmAuswahl()
-  updateDashboard()
-  logEvent("Alarmstufe aufgehoben")
-  saveState()
-}
-
-/* FAHRZEUGHISTORIE */
-function openFahrzeugHistorie(){
-  const liste=document.getElementById("fahrzeugHistorieListe"); if(!liste) return
-  const fahrzeuge=[]
-  document.querySelectorAll(".vehicle").forEach(v=>{
-    const id=v.dataset.id,type=v.children[1]?.innerText||"",name=v.children[2]?.innerText||"",aktiv=v.classList.contains("active")
-    const bereichHeader=v.closest(".bereich")?.querySelector(".bheader")?.innerText||(v.closest("#zufahrt")?"Zufahrt":"–")
-    const aufTransport=v.closest(".bereich.blue")!==null
-    const log=fahrzeugLog[id]||{}
-    fahrzeuge.push({id,type,name,aktiv,bereichHeader,aufTransport,erstellt:log.zeit||"–",eingetroffen:log.eingetroffen||null})
-  })
-  if(fahrzeuge.length===0){ liste.innerHTML='<div style="color:var(--text-dim);font-size:13px;text-align:center;padding:16px 0;">Noch keine Fahrzeuge angelegt.</div>'; document.getElementById("fahrzeugHistoriePopup").style.display="flex"; return }
-  let html='<div style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;padding-right:4px;">'
-  fahrzeuge.forEach(f=>{
-    const farbe=f.aktiv?"var(--veh-active)":(f.aufTransport?"#888":"var(--veh-inactive)")
-    const statusText=f.aktiv?"\u2705 Vor Ort \u2013 "+f.bereichHeader:(f.aufTransport?"\uD83D\uDE91 Transport \u2013 "+f.bereichHeader:"\u23F3 Noch nicht eingetroffen")
-    html+='<div style="background:var(--bg-card);border:1.5px solid var(--border);border-left:4px solid '+farbe+';border-radius:7px;padding:10px 13px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-family:\'Rajdhani\',sans-serif;font-size:15px;font-weight:700;color:var(--text-primary);">'+f.type+' \u00b7 '+f.name+'</span><span style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--text-dim);">Angelegt: '+f.erstellt+'</span></div><div style="font-size:13px;font-weight:600;color:'+farbe+';margin-top:4px;">'+statusText+'</div>'+(f.eingetroffen?'<div style="font-size:12px;color:var(--text-dim);font-family:\'Share Tech Mono\',monospace;margin-top:2px;">Eingetroffen: '+f.eingetroffen+'</div>':'')+'</div>'
-  })
-  html+="</div>"; liste.innerHTML=html
-  document.getElementById("fahrzeugHistoriePopup").style.display="flex"
-}
-
-/* EXPORT */
-function exportEinsatz(){
-  const now=new Date(),zeitstempel=now.toLocaleString("de-AT")
-  let fahrzeugeRows=""
-  document.querySelectorAll(".vehicle").forEach(v=>{
-    const typ=v.children[1]?.innerText||"",name=v.children[2]?.innerText||"",aktiv=v.classList.contains("active")?"Eingetroffen":"Zugewiesen"
-    const pats=v.querySelector(".patBadge")?.innerText||"0"
-    const area=v.closest(".bereich")?.querySelector(".bheader")?.innerText||(v.closest("#zufahrt")?"Zufahrt":"–")
-    fahrzeugeRows+="<tr><td>"+typ+"</td><td>"+name+"</td><td>"+aktiv+"</td><td>"+area+"</td><td>"+pats+"</td></tr>"
-  })
-  let funkRows=""; document.querySelectorAll("#log div").forEach(d=>{ funkRows+="<tr><td>"+d.innerText+"</td></tr>" })
-  let logRows=eventLog.map(e=>"<tr><td>"+e+"</td></tr>").join("")
-  const html='<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Einsatzbericht SEG-10</title><style>body{font-family:Arial,sans-serif;font-size:13px;margin:30px;color:#111}h1{font-size:20px;border-bottom:3px solid #c0392b;padding-bottom:8px}h2{font-size:14px;margin-top:24px;color:#c0392b;text-transform:uppercase;letter-spacing:1px}.meta{color:#555;font-size:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#c0392b;color:white;padding:6px 10px;text-align:left;font-size:12px}td{padding:5px 10px;border-bottom:1px solid #ddd}tr:nth-child(even) td{background:#f9f9f9}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}.sbox{border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center}.sbox .num{font-size:28px;font-weight:bold}.sbox .lbl{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px}.t1 .num{color:#c0392b}.t2 .num{color:#d68910}.t3 .num{color:#1e8449}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="float:right;padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer">Drucken</button><h1>Einsatzbericht SEG-10</h1><div class="meta">Berufsrettung Wien | '+zeitstempel+' | Patienten: <strong>'+totalPatients+'</strong></div><div class="summary"><div class="sbox"><div class="num">'+totalPatients+'</div><div class="lbl">Gesamt</div></div><div class="sbox t1"><div class="num">'+sichtungCounts.SK1+'</div><div class="lbl">SK1 Sofort</div></div><div class="sbox t2"><div class="num">'+sichtungCounts.SK2+'</div><div class="lbl">SK2 Dringend</div></div><div class="sbox t3"><div class="num">'+sichtungCounts.SK3+'</div><div class="lbl">SK3 Nicht dringend</div></div></div><h2>Fahrzeuge</h2><table><tr><th>Typ</th><th>Kennung</th><th>Status</th><th>Bereich</th><th>Patienten</th></tr>'+(fahrzeugeRows||"<tr><td colspan='5'>Keine Fahrzeuge</td></tr>")+'</table><h2>Funkprotokoll</h2><table><tr><th>Eintrag</th></tr>'+(funkRows||"<tr><td>Keine Funksprueche</td></tr>")+'</table><h2>Ereignisprotokoll</h2><table><tr><th>Eintrag</th></tr>'+(logRows||"<tr><td>Kein Log</td></tr>")+'</table></body></html>'
-  const blob=new Blob([html],{type:"text/html;charset=utf-8"})
-  const url=URL.createObjectURL(blob)
-  const win=window.open(url,"_blank")
-  if(win) win.focus()
-  logEvent("Einsatz exportiert")
-}
-
-/* SHORTCUTS
-   Ctrl+Shift+1-5: Fahrzeuge (Ziffern = keine Browser-Konflikte)
-   Ctrl+Shift+6: Einsatz starten (Ziffer = kein AltGr-Problem)
-   Ctrl+Alt+Buchstabe: restliche Aktionen (e.code = layout-unabhaengig)
-   Fahrzeug-Menue offen: Tasten 1-5
-*/
-const SHORTCUTS=[
-  // Fahrzeuge: Ctrl+Shift+Ziffer (konfliktfrei)
-  {keys:"Ctrl+Shift+1", code:"Digit1", label:"RTW erstellen",             action:()=>createVehicle("RTW"),  cs:true},
-  {keys:"Ctrl+Shift+2", code:"Digit2", label:"KTW erstellen",             action:()=>createVehicle("KTW"),  cs:true},
-  {keys:"Ctrl+Shift+3", code:"Digit3", label:"NEF erstellen",             action:()=>createVehicle("NEF"),  cs:true},
-  {keys:"Ctrl+Shift+4", code:"Digit4", label:"FISU erstellen",            action:()=>createVehicle("FISU"), cs:true},
-  {keys:"Ctrl+Shift+5", code:"Digit5", label:"NAH erstellen",             action:()=>createVehicle("NAH"),  cs:true},
-  // Einsatz starten: Ctrl+Shift+6 (Ziffer = kein AltGr)
-  {keys:"Ctrl+Shift+6", code:"Digit6", label:"Einsatz starten",           action:()=>startEinsatz(),        cs:true},
-  // Restliche: Ctrl+Alt+Buchstabe (e.code layout-unabhaengig)
-  {keys:"Ctrl+Alt+E",   code:"KeyE",   label:"Einsatz beenden",           action:()=>endEinsatz()},
-  {keys:"Ctrl+Alt+F",   code:"KeyF",   label:"Vollbild an/aus",           action:()=>toggleFullscreen()},
-  {keys:"Ctrl+Alt+D",   code:"KeyD",   label:"Dark Mode an/aus",          action:()=>toggleTheme()},
-  {keys:"Ctrl+Alt+V",   code:"KeyV",   label:"Fahrzeug-Menue oeffnen",    action:()=>openVehicleMenu()},
-  {keys:"Ctrl+Alt+P",   code:"KeyP",   label:"Patienten-Menue oeffnen",   action:()=>openPatientMenu()},
-  {keys:"Ctrl+Alt+A",   code:"KeyA",   label:"Alarmstufen oeffnen",       action:()=>openAlarmstufen()},
-  {keys:"Ctrl+Alt+H",   code:"KeyH",   label:"Halteplatz erstellen",      action:()=>createHalteplatz()},
-  {keys:"Ctrl+Alt+W",   code:"KeyW",   label:"PSS erstellen",             action:()=>createPSS()},
-  {keys:"Ctrl+Alt+O",   code:"KeyO",   label:"Vorsichtung erstellen",     action:()=>createVorsichtung()},
-  {keys:"Ctrl+Alt+B",   code:"KeyB",   label:"BER erstellen",             action:()=>createBER()},
-  {keys:"Ctrl+Alt+X",   code:"KeyX",   label:"Abschnitt erstellen",       action:()=>createAbschnitt()},
-  {keys:"Ctrl+Alt+G",   code:"KeyG",   label:"Funk - Eingabe fokussieren",action:()=>document.getElementById("funkVon")?.focus(), allowInInput:true},
-  {keys:"Ctrl+Alt+K",   code:"KeyK",   label:"Shortcut-Uebersicht",       action:()=>{ const ov=document.getElementById("shortcutOverlay"); if(ov) ov.style.display="flex" }},
-]
-
-function initShortcuts(){
-  window.addEventListener("keydown", function(e){
-
-    if(e.key==="Escape"){
-      closePopup()
-      document.getElementById("alarmPopup").style.display="none"
-      const ov=document.getElementById("shortcutOverlay"); if(ov) ov.style.display="none"
-      return
-    }
-
-    const isInput = ["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)
-
-    // Fahrzeug-Popup offen: Tasten 1-5
-    if(vehicleHotkeysActive && !e.ctrlKey && !e.altKey && !e.shiftKey){
-      if(e.code==="Digit1"){ e.preventDefault(); createVehicle("RTW"); return }
-      if(e.code==="Digit2"){ e.preventDefault(); createVehicle("KTW"); return }
-      if(e.code==="Digit3"){ e.preventDefault(); createVehicle("NEF"); return }
-      if(e.code==="Digit4"){ e.preventDefault(); createVehicle("FISU"); return }
-      if(e.code==="Digit5"){ e.preventDefault(); createVehicle("NAH"); return }
-    }
-
-    // Ctrl+Shift+Ziffer (Fahrzeuge + Einsatz starten)
-    if(e.ctrlKey && e.shiftKey && !e.altKey){
-      const sc = SHORTCUTS.find(s => s.cs && s.code === e.code)
-      if(sc){
-        e.preventDefault(); e.stopImmediatePropagation()
-        if(!isInput) sc.action()
-        return
-      }
-    }
-
-    // Ctrl+Alt+Buchstabe – e.code ist layout-unabhaengig
-    if(e.ctrlKey && e.altKey && !e.shiftKey){
-      const sc = SHORTCUTS.find(s => !s.cs && s.code === e.code)
-      if(sc){
-        if(isInput && !sc.allowInInput) return
-        e.preventDefault(); e.stopImmediatePropagation(); sc.action(); return
-      }
-    }
-
-  }, true)
-}
-
-function renderShortcutList(){
-  const el=document.getElementById("shortcutList"); if(!el) return
-  el.innerHTML=SHORTCUTS.map(sc=>`<div style="display:flex;justify-content:space-between;gap:20px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--accent-blue);font-family:'Share Tech Mono',monospace;font-size:11px">${sc.keys}</span><span>${sc.label}</span></div>`).join("")
-}
+// Beim Laden + alle 5 Sekunden aktualisieren
+fetchData()
+setInterval(fetchData, 5000)
+</script>
+</body>
+</html>
