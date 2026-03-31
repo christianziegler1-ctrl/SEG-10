@@ -1,368 +1,1479 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SEG-10 Live Dashboard</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&display=swap');
+/* =========================================================
+   EINSATZBOARD v6 – CSS
+   Tag/Nacht · Lesbar · Professionell
+========================================================= */
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
 
-  body {
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    background: #0d0f14;
-    color: #e8ecf4;
-    min-height: 100vh;
-    padding: 12px;
-  }
+/* =========================================================
+   LIGHT THEME – Standard
+========================================================= */
+:root, [data-theme="light"] {
+  --bg-base:        #e8ecf2;
+  --bg-panel:       #f4f6fa;
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #f0f4fb;
+  --border:         #c8d0de;
+  --border-bright:  #9aaac0;
 
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 16px;
-    background: #141720;
-    border-bottom: 3px solid #e63946;
-    border-radius: 8px;
-    margin-bottom: 12px;
-  }
+  --text-primary:   #0f1623;
+  --text-secondary: #3a4560;
+  --text-dim:       #8a96a8;
 
-  header h1 {
-    font-size: clamp(14px, 3vw, 20px);
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #e8ecf4;
-  }
+  --accent-red:     #c0392b;
+  --accent-green:   #1a7a52;
+  --accent-blue:    #1a56db;
+  --accent-yellow:  #c47d00;
 
-  #status {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 1px;
-    color: #4a5268;
-    text-align: right;
-  }
+  --veh-inactive:   #b03030;
+  --veh-active:     #1a7a52;
 
-  #status.online { color: #2ec4b6; }
-  #status.offline { color: #e63946; }
+  --glow-red:   0 0 0 3px rgba(192,57,43,0.18);
+  --glow-green: 0 0 0 3px rgba(26,122,82,0.18);
+  --glow-blue:  0 0 0 3px rgba(26,86,219,0.18);
 
-  #alarmBanner {
-    display: none;
-    background: rgba(230,57,70,0.15);
-    border: 2px solid #e63946;
-    border-radius: 8px;
-    padding: 12px 18px;
-    text-align: center;
-    font-size: clamp(16px, 4vw, 24px);
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: #e63946;
-    margin-bottom: 12px;
-    animation: pulse 2s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%,100% { box-shadow: 0 0 0 0 rgba(230,57,70,0.3); }
-    50% { box-shadow: 0 0 20px rgba(230,57,70,0.5); }
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-
-  @media(min-width: 600px){
-    .grid { grid-template-columns: 1fr 1fr 1fr; }
-  }
-
-  .card {
-    background: #1a1f2e;
-    border: 1.5px solid #2a3048;
-    border-radius: 8px;
-    padding: 12px 14px;
-  }
-
-  .card-title {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #4895ef;
-    border-bottom: 1.5px solid #2a3048;
-    padding-bottom: 6px;
-    margin-bottom: 8px;
-  }
-
-  .card-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 3px 0;
-    font-size: clamp(13px, 2.5vw, 16px);
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-  }
-
-  .card-row:last-child { border-bottom: none; }
-
-  .val {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: clamp(14px, 2.8vw, 18px);
-    font-weight: 700;
-    color: #e8ecf4;
-  }
-
-  .val.big {
-    font-size: clamp(22px, 5vw, 36px);
-    color: #f4d35e;
-  }
-
-  .sk1 { color: #e63946; font-weight: 700; }
-  .sk2 { color: #f4a261; font-weight: 700; }
-  .sk3 { color: #2ec4b6; font-weight: 700; }
-  .sk4 { color: #4a5268; }
-
-  #timer-display {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: clamp(28px, 7vw, 52px);
-    color: #2ec4b6;
-    letter-spacing: 4px;
-    text-align: center;
-    padding: 10px;
-    text-shadow: 0 0 20px rgba(46,196,182,0.4);
-  }
-
-  #bereiche-list { display: flex; flex-direction: column; gap: 6px; }
-
-  .bereich-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 10px;
-    background: #141720;
-    border-radius: 5px;
-    font-size: clamp(12px, 2.2vw, 15px);
-  }
-
-  .bereich-row .bval {
-    font-family: 'Share Tech Mono', monospace;
-    font-weight: 700;
-    color: #f4d35e;
-  }
-
-  #no-data {
-    text-align: center;
-    padding: 40px;
-    color: #4a5268;
-    font-size: 14px;
-    letter-spacing: 2px;
-  }
-
-  #main { display: none; }
-
-  .seg-badge {
-    background: rgba(46,196,182,0.15);
-    border: 1.5px solid #2ec4b6;
-    border-radius: 6px;
-    padding: 6px 14px;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: clamp(13px, 2.5vw, 16px);
-    font-weight: 700;
-    letter-spacing: 1px;
-    color: #2ec4b6;
-    text-transform: uppercase;
-  }
-
-  footer {
-    text-align: center;
-    color: #2a3048;
-    font-size: 10px;
-    letter-spacing: 2px;
-    margin-top: 14px;
-    font-family: 'Share Tech Mono', monospace;
-  }
-</style>
-</head>
-<body>
-
-<header>
-  <div>
-    <div style="font-size:9px;letter-spacing:2px;color:#4a5268;text-transform:uppercase">Berufsrettung Wien · MA 70</div>
-    <h1>SEG-10 Live</h1>
-  </div>
-  <div id="status">● Verbinde…</div>
-</header>
-
-<div id="alarmBanner"></div>
-
-<div id="no-data">Warte auf Daten vom SEG-10…</div>
-
-<div id="main">
-
-  <div style="text-align:center;margin-bottom:10px">
-    <div style="font-size:10px;letter-spacing:2px;color:#4a5268;text-transform:uppercase;margin-bottom:4px">Einsatzzeit</div>
-    <div id="timer-display">00:00:00</div>
-  </div>
-
-  <div class="grid">
-
-    <div class="card">
-      <div class="card-title">Fahrzeuge</div>
-      <div class="card-row"><span>RTW</span><span class="val" id="d-rtw">0</span></div>
-      <div class="card-row"><span>KTW</span><span class="val" id="d-ktw">0</span></div>
-      <div class="card-row"><span>NEF</span><span class="val" id="d-nef">0</span></div>
-      <div class="card-row"><span>FISU</span><span class="val" id="d-fisu">0</span></div>
-      <div class="card-row"><span>NAH</span><span class="val" id="d-nah">0</span></div>
-      <div class="card-row"><span>FK</span><span class="val" id="d-fk">0</span></div>
-      <div class="card-row" style="margin-top:4px;border-top:1px solid #2a3048;padding-top:6px">
-        <span style="font-weight:700">Gesamt</span>
-        <span class="val big" id="d-total">0</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Patienten</div>
-      <div class="card-row"><span>Gesamt</span><span class="val big" id="d-pat-gesamt">0</span></div>
-      <div class="card-row"><span class="sk1">SK1 Sofort</span><span class="val sk1" id="d-sk1">0</span></div>
-      <div class="card-row"><span class="sk2">SK2 Dringend</span><span class="val sk2" id="d-sk2">0</span></div>
-      <div class="card-row"><span class="sk3">SK3 Leicht</span><span class="val sk3" id="d-sk3">0</span></div>
-      <div class="card-row"><span class="sk4">SK4</span><span class="val sk4" id="d-sk4">0</span></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Bereiche</div>
-      <div class="card-row"><span>PSS</span><span class="val" id="d-pss">–</span></div>
-      <div class="card-row"><span>Vorsichtung</span><span class="val" id="d-vor">–</span></div>
-      <div class="card-row"><span>BER</span><span class="val" id="d-ber">–</span></div>
-      <div class="card-row"><span>SEG-21</span><span class="val" id="d-s21">0</span></div>
-      <div class="card-row"><span>SEG-22</span><span class="val" id="d-s22">0</span></div>
-      <div class="card-row"><span>EVAK</span><span class="val" id="d-evak">0</span></div>
-      <div class="card-row"><span>Transport</span><span class="val" id="d-transport">0</span></div>
-    </div>
-
-  </div>
-
-  <div class="card" id="bereiche-card" style="display:none;margin-bottom:10px">
-    <div class="card-title">Halteplätze &amp; Abschnitte</div>
-    <div id="bereiche-list"></div>
-  </div>
-
-  <div class="card" id="seg-card" style="display:none;margin-bottom:10px">
-    <div class="card-title">⚡ SEG Einheiten vor Ort</div>
-    <div id="seg-list" style="display:flex;flex-wrap:wrap;gap:8px;padding-top:4px"></div>
-  </div>
-
-</div>
-
-<footer>LETZTE AKTUALISIERUNG: <span id="lastUpdate">–</span></footer>
-
-<script>
-// =============================================
-// FIREBASE URL hier eintragen (gleiche wie in app.js)
-// =============================================
-const FIREBASE_URL = "https://seg-10-dashboard-default-rtdb.europe-west1.firebasedatabase.app"
-
-const statusEl = document.getElementById("status")
-
-function updateUI(data){
-  if(!data){ return }
-
-  document.getElementById("no-data").style.display = "none"
-  document.getElementById("main").style.display = "block"
-
-  // Alarm
-  const banner = document.getElementById("alarmBanner")
-  if(data.alarm){
-    banner.style.display = "block"
-    banner.textContent = "⚡ " + data.alarm
-  } else {
-    banner.style.display = "none"
-  }
-
-  // Timer
-  document.getElementById("timer-display").textContent = data.timer || "00:00:00"
-
-  // Fahrzeuge
-  const f = data.fahrzeuge || {}
-  document.getElementById("d-rtw").textContent   = f.rtw   || 0
-  document.getElementById("d-ktw").textContent   = f.ktw   || 0
-  document.getElementById("d-nef").textContent   = f.nef   || 0
-  document.getElementById("d-fisu").textContent  = f.fisu  || 0
-  document.getElementById("d-nah").textContent   = f.nah   || 0
-  document.getElementById("d-fk").textContent    = f.fk    || 0
-  document.getElementById("d-total").textContent = f.gesamt || 0
-
-  // Patienten
-  const p = data.patienten || {}
-  document.getElementById("d-pat-gesamt").textContent = p.gesamt || 0
-  document.getElementById("d-sk1").textContent = p.sk1 || 0
-  document.getElementById("d-sk2").textContent = p.sk2 || 0
-  document.getElementById("d-sk3").textContent = p.sk3 || 0
-  document.getElementById("d-sk4").textContent = p.sk4 || 0
-  document.getElementById("d-pss").textContent       = p.pss       !== undefined ? p.pss       : "–"
-  document.getElementById("d-vor").textContent       = p.vorsichtung !== undefined ? p.vorsichtung : "–"
-  document.getElementById("d-ber").textContent       = p.ber       !== undefined ? p.ber       : "–"
-  document.getElementById("d-s21").textContent       = p.seg21     || 0
-  document.getElementById("d-s22").textContent       = p.seg22     || 0
-  document.getElementById("d-evak").textContent      = p.evak      || 0
-  document.getElementById("d-transport").textContent = p.transport || 0
-
-  // Halteplätze & Abschnitte
-  const bereiche = data.bereiche || []
-  const card = document.getElementById("bereiche-card")
-  const list = document.getElementById("bereiche-list")
-  if(bereiche.length > 0){
-    card.style.display = "block"
-    list.innerHTML = bereiche.map(b =>
-      `<div class="bereich-row"><span>${b.name}</span><span class="bval">${b.fzg} Einh.</span></div>`
-    ).join("")
-  } else {
-    card.style.display = "none"
-  }
-
-  // SEG Einheiten vor Ort
-  const segCard = document.getElementById("seg-card")
-  const segList = document.getElementById("seg-list")
-  const segVorOrt = data.segVorOrt || []
-  if(segVorOrt.length > 0){
-    segCard.style.display = "block"
-    segList.innerHTML = segVorOrt.map(s =>
-      `<div class="seg-badge">✓ ${s}</div>`
-    ).join("")
-  } else {
-    segCard.style.display = "none"
-  }
-
-  // Zeitstempel
-  if(data.ts){
-    const d = new Date(data.ts)
-    document.getElementById("lastUpdate").textContent = d.toLocaleTimeString("de-AT")
-  }
+  --grid-line: rgba(26,86,219,0.04);
+  --shadow:    0 1px 4px rgba(0,0,0,0.10);
+  --shadow-md: 0 3px 12px rgba(0,0,0,0.13);
 }
 
-async function fetchData(){
-  if(!FIREBASE_URL){
-    statusEl.textContent = "⚠ Keine Firebase URL"
-    statusEl.className = "offline"
-    return
-  }
-  try {
-    const res = await fetch(FIREBASE_URL + "/dashboard.json?t=" + Date.now())
-    if(!res.ok) throw new Error(res.status)
-    const data = await res.json()
-    updateUI(data)
-    statusEl.textContent = "● LIVE"
-    statusEl.className = "online"
-  } catch(e) {
-    statusEl.textContent = "● Keine Verbindung"
-    statusEl.className = "offline"
-  }
+/* =========================================================
+   DARK THEME
+========================================================= */
+[data-theme="dark"] {
+  --bg-base:        #0d0f14;
+  --bg-panel:       #141720;
+  --bg-card:        #1a1f2e;
+  --bg-card-hover:  #1f2537;
+  --border:         #2a3048;
+  --border-bright:  #3d4a6a;
+
+  --text-primary:   #e8ecf4;
+  --text-secondary: #8a94a8;
+  --text-dim:       #4a5268;
+
+  --accent-red:     #e63946;
+  --accent-green:   #2ec4b6;
+  --accent-blue:    #4895ef;
+  --accent-yellow:  #f4d35e;
+
+  --veh-inactive:   #b03030;
+  --veh-active:     #1e8449;
+
+  --glow-red:   0 0 14px rgba(230,57,70,0.4);
+  --glow-green: 0 0 14px rgba(46,196,182,0.4);
+  --glow-blue:  0 0 14px rgba(72,149,239,0.4);
+
+  --grid-line: rgba(72,149,239,0.025);
+  --shadow:    0 1px 4px rgba(0,0,0,0.4);
+  --shadow-md: 0 3px 12px rgba(0,0,0,0.5);
 }
 
-// Beim Laden + alle 5 Sekunden aktualisieren
-fetchData()
-setInterval(fetchData, 5000)
-</script>
-</body>
-</html>
+/* =========================================================
+   RESET
+========================================================= */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100vh;
+  transition: background 0.25s, color 0.25s;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* =========================================================
+   HEADER
+========================================================= */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 18px;
+  height: 62px;
+  background: var(--bg-panel);
+  border-bottom: 3px solid var(--accent-red);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  z-index: 10;
+  transition: background 0.25s;
+}
+
+[data-theme="dark"] .logoBox img { filter: brightness(1.2); }
+
+.titleBox { text-align: center; flex: 1; }
+
+.titleBox h2 {
+  font-weight: 700;
+  font-size: 21px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.titleBox div {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.creatorBox {
+  font-size: 11px;
+  text-align: right;
+  color: var(--text-dim);
+  line-height: 1.7;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.themeToggle {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.themeToggle:hover { border-color: var(--accent-blue); box-shadow: var(--glow-blue); }
+
+/* =========================================================
+   LAYOUT
+========================================================= */
+.layout {
+  display: grid;
+  grid-template-columns: 40% 35% 25%;
+  height: calc(100vh - 62px);
+  position: relative;
+  z-index: 1;
+}
+
+.left  { border-right: 2px solid var(--border); overflow-y: auto; padding: 12px 12px 12px 14px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.middle { border-right: 2px solid var(--border); }
+
+/* =========================================================
+   SEG BUTTONS
+========================================================= */
+.segButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.segButtons button {
+  background: rgba(192,57,43,0.08);
+  color: var(--accent-red);
+  border: 1.5px solid rgba(192,57,43,0.3);
+  padding: 8px 18px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 18px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+  transition: all 0.18s;
+}
+.segButtons button:hover { background: rgba(192,57,43,0.18); }
+
+.seg.active {
+  background: rgba(26,122,82,0.15) !important;
+  color: var(--accent-green) !important;
+  border-color: rgba(26,122,82,0.5) !important;
+  box-shadow: var(--glow-green);
+}
+
+/* =========================================================
+   BEREICHE
+========================================================= */
+.bereich {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  margin-top: 9px;
+  min-height: 84px;
+  padding: 10px 10px 10px 12px;
+  position: relative;
+  overflow: visible;
+  transition: border-color 0.2s, background 0.25s;
+  box-shadow: var(--shadow);
+}
+.bereich:hover { border-color: var(--border-bright); }
+
+.bereich.blue {
+  border-left: 4px solid var(--accent-blue);
+  min-height: 100px;
+}
+
+/* =========================================================
+   BEREICH HEADER
+========================================================= */
+.bheader {
+  display: inline-block;
+  background: rgba(192,57,43,0.1);
+  color: var(--accent-red);
+  border: 1.5px solid rgba(192,57,43,0.3);
+  padding: 5px 14px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all 0.18s;
+}
+.bheader:hover { background: rgba(192,57,43,0.2); }
+.bheader.active {
+  background: rgba(26,122,82,0.12);
+  color: var(--accent-green);
+  border-color: rgba(26,122,82,0.45);
+  box-shadow: var(--glow-green);
+}
+
+/* =========================================================
+   DROP ZONE
+========================================================= */
+.drop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(10px, 0.9vw, 16px);
+  min-height: 44px;
+  padding: 6px 6px 10px 4px;
+  border-radius: 5px;
+  border: 1.5px dashed transparent;
+  transition: border-color 0.2s, background 0.2s;
+  overflow: visible;
+}
+.drop:hover {
+  border-color: var(--border-bright);
+  background: rgba(0,0,0,0.02);
+}
+
+/* =========================================================
+   FAHRZEUGE
+========================================================= */
+.vehicle {
+  width: clamp(62px, 5vw, 90px);
+  height: clamp(44px, 3.8vh, 64px);
+  border-radius: 7px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  background: var(--veh-inactive);
+  cursor: grab;
+  position: relative;
+  transition: all 0.18s;
+  border: 2px solid rgba(255,255,255,0.15);
+  box-shadow: var(--shadow-md);
+}
+.vehicle:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
+.vehicle:active { cursor: grabbing; transform: scale(0.97); }
+
+.vehicle.active {
+  background: var(--veh-active) !important;
+  border-color: rgba(255,255,255,0.3);
+  box-shadow: 0 0 0 3px rgba(26,122,82,0.35), var(--shadow-md);
+}
+
+/* Alle Typen: gleiche Grundfarbe (Rot = nicht da) */
+.vehicle.RTW,
+.vehicle.KTW,
+.vehicle.NEF,
+.vehicle.FISU,
+.vehicle.NAH { background: var(--veh-inactive); }
+
+/* kleiner Typ-Indikator oben */
+.vehicle .vType {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.75;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+.vehicle .vName {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Sichtungsstreifen */
+.vehicle .sichtStripe {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 5px; border-radius: 6px 6px 0 0;
+}
+.sichtStripe.SK1 { background: #e74c3c; }
+.sichtStripe.SK2 { background: #e67e22; }
+.sichtStripe.SK3 { background: #27ae60; }
+.sichtStripe.SK4 { background: #555; }
+
+/* =========================================================
+   PATIENT BADGE (auf Fahrzeug)
+========================================================= */
+.patBadge {
+  position: absolute; right: 3px; bottom: 3px;
+  background: var(--accent-yellow);
+  color: #000;
+  font-weight: 700; font-size: clamp(9px, 0.65vw, 12px);
+  padding: 1px 5px;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  cursor: pointer;
+  font-family: 'Share Tech Mono', monospace;
+  z-index: 3;
+  line-height: 1.4;
+}
+
+/* =========================================================
+   PATIENTEN BOX (auf Bereich)
+========================================================= */
+.patients {
+  position: absolute;
+  right: 10px; top: 50%;
+  transform: translateY(-50%);
+  background: var(--accent-yellow);
+  color: #111;
+  padding: 8px 16px;
+  font-size: 26px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 14px;
+  z-index: 5;
+  font-family: 'Share Tech Mono', monospace;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.22);
+  transition: transform 0.15s, box-shadow 0.15s;
+  min-width: 54px;
+  text-align: center;
+  line-height: 1;
+  border: 2px solid rgba(0,0,0,0.1);
+}
+.patients:hover { transform: translateY(-50%) scale(1.06); box-shadow: 0 5px 20px rgba(0,0,0,0.28); }
+.patients[data-unit="ZUFAHRT"] { display: none; }
+
+/* =========================================================
+   DELETE BUTTON
+========================================================= */
+.deleteVehicle, .deleteHP {
+  position: absolute; top: -9px; right: -9px;
+  background: var(--accent-red); color: #fff;
+  border-radius: 50%; width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 11px; font-weight: 700;
+  z-index: 10; box-shadow: var(--shadow);
+  transition: transform 0.15s;
+}
+.deleteVehicle:hover, .deleteHP:hover { transform: scale(1.2); }
+
+/* =========================================================
+   LAYOUT BEREICHE
+========================================================= */
+.topRow {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 9px; margin-top: 9px;
+}
+#pssContainer { margin-top: 9px; }
+#halteplaetze {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 9px; margin-top: 9px;
+}
+
+/* =========================================================
+   MITTLERE SPALTE
+========================================================= */
+.middle {
+  display: flex; flex-direction: column;
+  gap: 10px; padding: 12px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+.dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 2px;
+  background: var(--border);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  flex-shrink: 0;
+}
+
+.dashboard > div {
+  background: var(--bg-card);
+  padding: clamp(8px,0.7vw,13px) clamp(10px,0.9vw,16px);
+  line-height: clamp(1.5,1.7,1.9);
+  overflow-y: visible;
+  transition: background 0.25s;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(11px,0.78vw,14px);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dashboard b {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--accent-blue);
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+}
+
+/* Zahlen im Dashboard fett hervorheben */
+.dashboard strong {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.dash-sk1 { color: #c0392b; font-weight: 700; }
+.dash-sk2 { color: #c47000; font-weight: 700; }
+.dash-sk3 { color: #1a7a52; font-weight: 700; }
+.dash-sk4 { color: var(--text-dim); font-weight: 600; }
+
+/* =========================================================
+   ZUFAHRT
+========================================================= */
+.zufahrtContainer {
+  flex-shrink: 0;
+  min-height: clamp(80px, 10vh, 120px);
+  max-height: clamp(100px, 14vh, 150px);
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-left: 4px solid var(--accent-blue);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: var(--shadow);
+  transition: background 0.25s;
+}
+.zufahrtContainer::before {
+  content: 'ZUFAHRT';
+  position: absolute; top: 8px; left: 14px;
+  font-size: 11px; letter-spacing: 3px;
+  color: var(--accent-blue);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700; opacity: 0.65;
+}
+.zufahrt {
+  height: 100%; overflow: auto;
+  padding: 28px 10px 8px;
+  display: flex; flex-wrap: wrap;
+  gap: 8px; align-content: flex-start;
+}
+
+/* =========================================================
+   RECHTE SPALTE
+========================================================= */
+.right {
+  display: flex; flex-direction: column;
+  gap: 10px; padding: 12px;
+}
+
+/* MENÜ PANEL */
+.vehiclePanel {
+  background: var(--bg-panel);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+  transition: background 0.25s;
+}
+
+.vehiclePanel h3 {
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  border-bottom: 1.5px solid var(--border);
+  padding-bottom: 7px;
+  font-weight: 700;
+}
+
+.vehiclePanel > button {
+  display: block; width: 100%;
+  padding: 9px 10px;
+  font-size: 13px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 6px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border);
+  transition: all 0.15s;
+  text-transform: uppercase;
+  box-shadow: var(--shadow);
+}
+.vehiclePanel > button:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-bright);
+}
+
+.vehiclePanel > button[onclick="startEinsatz()"] {
+  color: var(--accent-green);
+  border-color: rgba(26,122,82,0.4);
+  background: rgba(26,122,82,0.07);
+}
+.vehiclePanel > button[onclick="startEinsatz()"]:hover {
+  background: rgba(26,122,82,0.15);
+  box-shadow: var(--glow-green);
+}
+
+.vehiclePanel > button[onclick="endEinsatz()"] {
+  color: var(--accent-red);
+  border-color: rgba(192,57,43,0.4);
+  background: rgba(192,57,43,0.07);
+}
+.vehiclePanel > button[onclick="endEinsatz()"]:hover {
+  background: rgba(192,57,43,0.15);
+  box-shadow: var(--glow-red);
+}
+
+.exportBtn {
+  color: var(--accent-blue) !important;
+  border-color: rgba(26,86,219,0.35) !important;
+  background: rgba(26,86,219,0.07) !important;
+}
+.exportBtn:hover {
+  background: rgba(26,86,219,0.14) !important;
+  box-shadow: var(--glow-blue) !important;
+}
+
+/* TIMER */
+#timer {
+  text-align: center;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--accent-green);
+  letter-spacing: 4px;
+  padding: 9px 0 3px;
+  border-top: 1.5px solid var(--border);
+  margin-top: 3px;
+}
+[data-theme="dark"] #timer { text-shadow: 0 0 14px rgba(46,196,182,0.5); }
+
+/* =========================================================
+   FUNK PANEL
+========================================================= */
+.funkPanel {
+  background: var(--bg-panel);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex; flex-direction: column;
+  flex: 1; min-height: 0;
+  box-shadow: var(--shadow);
+  transition: background 0.25s;
+}
+
+.funkPanel h3 {
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  border-bottom: 1.5px solid var(--border);
+  padding-bottom: 7px;
+  font-weight: 700;
+}
+
+.funkPanel input {
+  width: 100%; margin-bottom: 6px;
+  padding: 8px 11px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px; font-weight: 600;
+  letter-spacing: 1px;
+  transition: border-color 0.15s;
+}
+.funkPanel input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
+}
+.funkPanel input::placeholder { color: var(--text-dim); }
+
+.funkPanel > button {
+  padding: 9px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  background: rgba(26,86,219,0.08);
+  color: var(--accent-blue);
+  border: 1.5px solid rgba(26,86,219,0.35);
+  border-radius: 5px;
+  cursor: pointer; margin-bottom: 8px;
+  transition: all 0.15s;
+}
+.funkPanel > button:hover {
+  background: rgba(26,86,219,0.16);
+  box-shadow: var(--glow-blue);
+}
+
+/* FUNK LOG */
+#log {
+  flex: 1; overflow-y: auto;
+  min-height: 0;
+  font-size: 13px;
+  font-family: 'Share Tech Mono', monospace;
+  border-top: 1.5px solid var(--border);
+  padding-top: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  line-height: 1.9;
+}
+#log div {
+  color: var(--text-secondary);
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(128,128,128,0.07);
+}
+#log div:first-child { color: var(--accent-blue); font-weight: 600; }
+
+/* =========================================================
+   POPUP
+========================================================= */
+.popup {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(5px);
+  display: none; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+
+.popupContent {
+  background: var(--bg-panel);
+  border: 2px solid var(--border-bright);
+  border-radius: 10px;
+  padding: 22px; width: 350px;
+  box-shadow: 0 28px 60px rgba(0,0,0,0.35);
+  transition: background 0.25s;
+}
+
+.popupContent h3 {
+  font-size: 12px; letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  border-bottom: 1.5px solid var(--border);
+  padding-bottom: 9px;
+  font-weight: 700;
+}
+
+.popupContent input[type="number"] {
+  width: 100%; padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 26px; text-align: center;
+  margin-bottom: 12px;
+}
+.popupContent input[type="number"]:focus {
+  outline: none; border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
+}
+
+/* SICHTUNG */
+.sichtungRow {
+  display: flex; align-items: center;
+  gap: 6px; margin-bottom: 8px;
+}
+.sichtBtn {
+  flex: 1; padding: 8px 0;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px; font-weight: 700;
+  border-radius: 6px; cursor: pointer;
+  border: 2px solid transparent;
+  color: #fff; transition: all 0.15s;
+  letter-spacing: 1px;
+}
+.sichtBtn.sk1 { background: #c0392b; }
+.sichtBtn.sk2 { background: #c47000; }
+.sichtBtn.sk3 { background: #1a7a52; }
+.sichtBtn.sk4 { background: #555; color: #ddd; }
+.sichtBtn:hover { filter: brightness(1.12); }
+.sichtBtn.selected { outline: 3px solid white; outline-offset: 2px; }
+
+.sichtungLabel {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px; font-weight: 700;
+  color: var(--text-secondary);
+  min-width: 32px; text-align: center;
+}
+.sichtungLabel.SK1 { color: #c0392b; }
+.sichtungLabel.SK2 { color: #c47000; }
+.sichtungLabel.SK3 { color: #1a7a52; }
+.sichtungLabel.SK4 { color: var(--text-dim); }
+
+.sichtSetzenBtn {
+  display: block; width: 100%;
+  padding: 9px; margin-bottom: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  background: rgba(26,86,219,0.08);
+  color: var(--accent-blue);
+  border: 1.5px solid rgba(26,86,219,0.35);
+  border-radius: 6px; cursor: pointer;
+  transition: all 0.15s;
+}
+.sichtSetzenBtn:hover {
+  background: rgba(26,86,219,0.16);
+  box-shadow: var(--glow-blue);
+}
+
+/* POPUP BUTTONS */
+.popupButtons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.popupButtons button {
+  padding: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border);
+  border-radius: 5px; cursor: pointer;
+  transition: all 0.15s;
+}
+.popupButtons button:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+/* Fahrzeug-Popup farbig */
+#vehiclePopup .popupButtons button:nth-child(1) { background:#b03030; color:#fff; border-color:transparent; }
+#vehiclePopup .popupButtons button:nth-child(2) { background:#1a5276; color:#fff; border-color:transparent; }
+#vehiclePopup .popupButtons button:nth-child(3) { background:#6c3483; color:#fff; border-color:transparent; }
+#vehiclePopup .popupButtons button:nth-child(4) { background:#a04000; color:#fff; border-color:transparent; }
+#vehiclePopup .popupButtons button:nth-child(5) { background:#1a7a52; color:#fff; border-color:transparent; }
+
+#vehicleSelectBox select {
+  width: 100%; padding: 8px 10px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px; margin-top: 6px;
+}
+#vehicleSelectBox button { margin-top: 6px !important; width: 100%; }
+
+/* =========================================================
+   AUTOSAVE INDICATOR
+========================================================= */
+#autosaveIndicator {
+  position: fixed; right: 14px; bottom: 14px;
+  background: var(--bg-panel);
+  color: var(--accent-green);
+  border: 1.5px solid rgba(26,122,82,0.3);
+  padding: 5px 14px;
+  font-size: 11px; letter-spacing: 2px;
+  text-transform: uppercase; border-radius: 20px;
+  font-family: 'Share Tech Mono', monospace;
+  opacity: 0.85; z-index: 100;
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
+
+/* =========================================================
+   PRINT
+========================================================= */
+@media print {
+  body { background: white; color: black; overflow: auto; }
+  header, .right, #autosaveIndicator, .popup { display: none !important; }
+  .layout { display: block; }
+  .left, .middle { width: 100%; border: none; }
+  .bereich { break-inside: avoid; }
+  .vehicle { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* =========================================================
+   ALARMSTUFEN POPUP
+========================================================= */
+.alarmContent {
+  width: 520px !important;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.alarmHinweis {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  font-style: italic;
+}
+
+#alarmStufen {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  max-height: 52vh;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.alarmStufe {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-left: 4px solid var(--accent-red);
+  border-radius: 7px;
+  padding: 12px 14px;
+  position: relative;
+}
+
+.alarmStufe input.alarmTitel {
+  width: 100%;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--border);
+  color: var(--accent-red);
+  padding: 2px 0 6px;
+  margin-bottom: 8px;
+  outline: none;
+}
+.alarmStufe input.alarmTitel:focus {
+  border-bottom-color: var(--accent-red);
+}
+.alarmStufe input.alarmTitel::placeholder {
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.alarmStufe textarea {
+  width: 100%;
+  min-height: 70px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.7;
+  resize: vertical;
+  outline: none;
+}
+.alarmStufe textarea::placeholder {
+  color: var(--text-dim);
+}
+
+.alarmStufe .deleteAlarm {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: rgba(192,57,43,0.12);
+  color: var(--accent-red);
+  border: 1px solid rgba(192,57,43,0.3);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+}
+.alarmStufe .deleteAlarm:hover {
+  background: rgba(192,57,43,0.25);
+}
+
+.alarmActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.alarmActions button {
+  padding: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+.alarmActions button:first-child {
+  color: var(--accent-green);
+  border-color: rgba(26,122,82,0.4);
+  background: rgba(26,122,82,0.07);
+}
+.alarmActions button:first-child:hover {
+  background: rgba(26,122,82,0.15);
+  box-shadow: var(--glow-green);
+}
+.alarmActions button:last-child:hover {
+  border-color: var(--border-bright);
+}
+
+/* Alarmstufen-Button im Menü */
+.vehiclePanel > button[onclick="openAlarmstufen()"] {
+  color: var(--accent-red);
+  border-color: rgba(192,57,43,0.35);
+  background: rgba(192,57,43,0.07);
+}
+.vehiclePanel > button[onclick="openAlarmstufen()"]:hover {
+  background: rgba(192,57,43,0.15);
+  box-shadow: var(--glow-red);
+}
+
+/* =========================================================
+   ADRESSFELD IN BEREICHEN
+========================================================= */
+.adressfeld {
+  display: block;
+  width: calc(100% - 70px);
+  margin: 0 0 8px 0;
+  padding: 5px 9px;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px dashed var(--border-bright);
+  color: var(--text-secondary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  outline: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+.adressfeld:focus {
+  border-bottom-color: var(--accent-blue);
+  color: var(--text-primary);
+}
+.adressfeld::placeholder {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* =========================================================
+   BHP FELDER
+========================================================= */
+.bhpRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.bhp {
+  background: #ffffff;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: var(--shadow);
+  user-select: none;
+}
+
+[data-theme="dark"] .bhp {
+  background: #2a2f40;
+  border-color: var(--border-bright);
+}
+
+.bhp:hover {
+  border-color: var(--accent-green);
+  transform: translateY(-1px);
+}
+
+.bhp.aktiv {
+  background: #1a7a52;
+  border-color: #1a7a52;
+  box-shadow: 0 0 0 3px rgba(26,122,82,0.25), var(--shadow-md);
+}
+
+.bhpLabel {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+  transition: color 0.2s;
+}
+
+.bhp.aktiv .bhpLabel {
+  color: #ffffff;
+}
+
+.bhpSub {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 2px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.bhp.aktiv .bhpSub {
+  color: rgba(255,255,255,0.7);
+}
+
+/* =========================================================
+   ALARMSTUFEN TABS
+========================================================= */
+.alarmTabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.alarmTab {
+  padding: 9px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.alarmTab.active {
+  background: rgba(192,57,43,0.1);
+  color: var(--accent-red);
+  border-color: rgba(192,57,43,0.4);
+}
+
+/* Aktive Alarmstufe Auswahl */
+#alarmAuswahl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.alarmWahlBtn {
+  padding: 14px 16px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-align: left;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 2px solid var(--border);
+  border-left: 5px solid var(--accent-red);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.alarmWahlBtn:hover {
+  background: rgba(192,57,43,0.08);
+  border-color: var(--accent-red);
+  box-shadow: var(--glow-red);
+}
+
+.alarmWahlBtn.aktiv {
+  background: rgba(192,57,43,0.12);
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+  box-shadow: var(--glow-red);
+}
+
+.alarmWahlBtn .wahlTitel {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.alarmWahlBtn .wahlText {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* Dashboard Alarmstufe Anzeige */
+.dashAlarm {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(192,57,43,0.1);
+  border: 1.5px solid rgba(192,57,43,0.35);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-red);
+  letter-spacing: 0.5px;
+}
+
+/* =========================================================
+   DASHBOARD ? BUTTON & HEADER
+========================================================= */
+.dashHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+}
+
+.dashHeader b {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dashInfoBtn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-base);
+  border: 1.5px solid var(--border-bright);
+  color: var(--text-secondary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.dashInfoBtn:hover {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: white;
+  box-shadow: var(--glow-blue);
+}
+
+/* =========================================================
+   MENU GRID (kompakt, 2 Spalten)
+========================================================= */
+.menuGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-sm, 6px);
+  margin-bottom: var(--sp-sm, 6px);
+}
+.menuGrid > button {
+  display: block;
+  width: 100%;
+  padding: clamp(6px,0.5vw,9px) clamp(4px,0.4vw,8px);
+  font-size: clamp(10px,0.72vw,13px);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  letter-spacing: clamp(0.3px,0.05vw,0.9px);
+  border-radius: clamp(4px,0.35vw,7px);
+  cursor: pointer;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border);
+  transition: all 0.15s;
+  text-transform: uppercase;
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menuGrid > button:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-bright);
+}
+.menuGrid > .btnGreen {
+  color: var(--accent-green);
+  border-color: rgba(26,122,82,0.4);
+  background: rgba(26,122,82,0.07);
+  grid-column: 1;
+}
+.menuGrid > .btnGreen:hover { background: rgba(26,122,82,0.15); box-shadow: var(--glow-green); }
+.menuGrid > .btnRed {
+  color: var(--accent-red);
+  border-color: rgba(192,57,43,0.4);
+  background: rgba(192,57,43,0.07);
+}
+.menuGrid > .btnRed:hover { background: rgba(192,57,43,0.15); box-shadow: var(--glow-red); }
+.menuGrid > .exportBtn {
+  color: var(--accent-blue) !important;
+  border-color: rgba(26,86,219,0.35) !important;
+  background: rgba(26,86,219,0.07) !important;
+  grid-column: 1 / -1;
+}
+.menuGrid > .exportBtn:hover { background: rgba(26,86,219,0.14) !important; box-shadow: var(--glow-blue) !important; }
+
+/* =========================================================
+   FUEHRUNGSKRAFT KACHEL (gelb, fix)
+========================================================= */
+.fuehrungskraft {
+  width: clamp(62px,5vw,90px);
+  height: clamp(44px,3.8vh,64px);
+  border-radius: clamp(5px,0.4vw,8px);
+  background: #c47d00;
+  border: 2px solid rgba(255,255,255,0.25);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  cursor: grab;
+  position: relative;
+  transition: transform 0.18s, box-shadow 0.18s;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.22);
+  flex-shrink: 0;
+}
+.fuehrungskraft:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
+.fuehrungskraft:active { cursor: grabbing; transform: scale(0.97); }
+
+.fkTyp {
+  font-size: clamp(9px,0.65vw,12px);
+  font-weight: 700;
+  letter-spacing: clamp(0.5px,0.07vw,1.2px);
+  line-height: 1;
+}
+.fkName {
+  font-size: clamp(10px,0.75vw,13px);
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.9;
+}
+.deleteFk {
+  position: absolute;
+  top: clamp(-7px,-0.5vw,-6px);
+  right: clamp(-7px,-0.5vw,-6px);
+  background: #8a5700;
+  color: #fff;
+  border-radius: 50%;
+  width: clamp(15px,1.1vw,20px);
+  height: clamp(15px,1.1vw,20px);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: clamp(8px,0.55vw,11px);
+  font-weight: 700;
+  z-index: 10;
+  transition: transform 0.15s;
+}
+.deleteFk:hover { transform: scale(1.2); }
+
+/* =========================================================
+   EINSATZABSCHNITT
+========================================================= */
+.abschnitt {
+  border-left: 4px solid var(--accent-blue);
+  margin-top: 0;
+}
+#abschnitteContainer {
+  margin-top: clamp(6px,0.6vw,10px);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: clamp(6px,0.6vw,10px);
+  align-items: start;
+}
+.abschnittHeader {
+  display: block;
+  width: 100%;
+  margin-bottom: clamp(4px,0.4vw,8px);
+}
+.abschnittName {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(13px,1vw,17px);
+  font-weight: 700;
+  letter-spacing: clamp(0.5px,0.08vw,1.2px);
+  text-transform: uppercase;
+  color: var(--accent-blue);
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--border);
+  outline: none;
+  width: 100%;
+  padding: 2px 0 4px;
+  transition: border-color 0.15s;
+}
+.abschnittName:focus { border-bottom-color: var(--accent-blue); }
+
+/* FK-Zone im Abschnitt */
+.abschnittFkZone {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px,0.5vw,10px);
+  margin-bottom: clamp(4px,0.4vw,8px);
+  min-height: clamp(40px,4vh,60px);
+  padding: clamp(3px,0.3vw,5px) clamp(4px,0.35vw,7px);
+  background: rgba(196,125,0,0.07);
+  border: 1.5px dashed rgba(196,125,0,0.35);
+  border-radius: clamp(4px,0.35vw,7px);
+}
+.abschnittFkLabel {
+  font-size: clamp(9px,0.6vw,11px);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #c47d00;
+  opacity: 0.7;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.fkDrop {
+  flex: 1;
+  min-height: clamp(34px,3.5vh,50px);
+  border: none !important;
+  background: transparent !important;
+}
+
+/* =========================================================
+   BER CONTAINER (zwischen Zufahrt und BHP)
+========================================================= */
+#berContainer {
+  flex: none;
+}
+#berContainer .bereich {
+  margin-top: 0;
+}
+
+
+/* =========================================================
+   ALARM BANNER – über dem Dashboard
+========================================================= */
+#alarmBanner {
+  display: none;
+  background: var(--accent-red);
+  color: #fff;
+  text-align: center;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(14px, 1.2vw, 20px);
+  font-weight: 700;
+  letter-spacing: clamp(1px, 0.15vw, 3px);
+  text-transform: uppercase;
+  padding: clamp(7px, 0.7vh, 12px) clamp(10px, 1vw, 18px);
+  border-radius: var(--radius, 8px);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px rgba(192,57,43,0.3), var(--shadow-md);
+  animation: alarmPulse 2s ease-in-out infinite;
+}
+[data-theme="dark"] #alarmBanner {
+  background: var(--accent-red);
+  box-shadow: 0 0 20px rgba(230,57,70,0.5);
+}
+@keyframes alarmPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.82; }
+}
+
+/* Dashboard: kein Scroll mehr, auto-Höhe */
+.dashboard > div {
+  overflow-y: visible !important;
+}
+
+/* =========================================================
+   ALARM BANNER (über Dashboard)
+========================================================= */
+#alarmBanner {
+  display: none;
+  background: rgba(192,57,43,0.15);
+  border: 2px solid var(--accent-red);
+  border-radius: var(--radius, 8px);
+  padding: clamp(6px,0.6vh,10px) clamp(12px,1vw,18px);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(13px, 1vw, 17px);
+  font-weight: 700;
+  letter-spacing: clamp(1px, 0.15vw, 2px);
+  text-transform: uppercase;
+  color: var(--accent-red);
+  text-align: center;
+  box-shadow: var(--glow-red);
+  flex-shrink: 0;
+  animation: alarmPulse 2s ease-in-out infinite;
+}
+[data-theme="dark"] #alarmBanner {
+  background: rgba(230,57,70,0.18);
+}
+@keyframes alarmPulse {
+  0%, 100% { box-shadow: var(--glow-red); }
+  50% { box-shadow: 0 0 20px rgba(192,57,43,0.5); }
+}
