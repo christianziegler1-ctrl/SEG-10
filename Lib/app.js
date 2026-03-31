@@ -571,7 +571,7 @@ function updateDashboard(){
 ========================================================= */
 
 // Diese Zeile einmalig mit deinen Firebase-Daten befüllen (siehe Anleitung)
-const FIREBASE_URL = "https://seg-10-dashboard-default-rtdb.europe-west1.firebasedatabase.app/" // z.B. "https://seg10-xxxxx-default-rtdb.europe-west1.firebasedatabase.app"
+const FIREBASE_URL = "" // z.B. "https://seg10-xxxxx-default-rtdb.europe-west1.firebasedatabase.app"
 
 function syncToFirebase(){
   if(!FIREBASE_URL) return // Kein Firebase konfiguriert
@@ -599,6 +599,12 @@ function syncToFirebase(){
     ? "ALARMSTUFE " + (aktiveAlarmstufe+1) + " – " + alarmstufen[aktiveAlarmstufe].titel
     : ""
 
+  // Aktive SEG-Einheiten (grün markierte Buttons)
+  const segVorOrt = []
+  document.querySelectorAll(".seg.active").forEach(btn => {
+    segVorOrt.push(btn.innerText.trim())
+  })
+
   const data = {
     ts: new Date().toISOString(),
     alarm: alarmstufeText,
@@ -611,6 +617,7 @@ function syncToFirebase(){
       seg21: pu("21"), seg22: pu("22"), evak: pu("EVAK"), transport: pu("TRANSPORT")
     },
     bereiche,
+    segVorOrt,
     einsatzAktiv,
     timer: document.getElementById("timer")?.innerText || "00:00:00"
   }
