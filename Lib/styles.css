@@ -668,6 +668,7 @@ header {
 /* FUNK LOG */
 #log {
   flex: 1; overflow-y: auto;
+  min-height: 0;
   font-size: 13px;
   font-family: 'Share Tech Mono', monospace;
   border-top: 1.5px solid var(--border);
@@ -1355,6 +1356,8 @@ header {
   align-items: start;
 }
 .abschnittHeader {
+  display: block;
+  width: 100%;
   margin-bottom: clamp(4px,0.4vw,8px);
 }
 .abschnittName {
