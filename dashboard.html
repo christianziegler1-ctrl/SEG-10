@@ -161,6 +161,19 @@
 
   #main { display: none; }
 
+  .seg-badge {
+    background: rgba(46,196,182,0.15);
+    border: 1.5px solid #2ec4b6;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: clamp(13px, 2.5vw, 16px);
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #2ec4b6;
+    text-transform: uppercase;
+  }
+
   footer {
     text-align: center;
     color: #2a3048;
@@ -235,6 +248,11 @@
     <div id="bereiche-list"></div>
   </div>
 
+  <div class="card" id="seg-card" style="display:none;margin-bottom:10px">
+    <div class="card-title">⚡ SEG Einheiten vor Ort</div>
+    <div id="seg-list" style="display:flex;flex-wrap:wrap;gap:8px;padding-top:4px"></div>
+  </div>
+
 </div>
 
 <footer>LETZTE AKTUALISIERUNG: <span id="lastUpdate">–</span></footer>
@@ -243,7 +261,7 @@
 // =============================================
 // FIREBASE URL hier eintragen (gleiche wie in app.js)
 // =============================================
-const FIREBASE_URL = "https://seg-10-dashboard-default-rtdb.europe-west1.firebasedatabase.app/" // z.B. "https://seg10-xxxxx-default-rtdb.europe-west1.firebasedatabase.app"
+const FIREBASE_URL = "" // z.B. "https://seg10-xxxxx-default-rtdb.europe-west1.firebasedatabase.app"
 
 const statusEl = document.getElementById("status")
 
@@ -301,6 +319,19 @@ function updateUI(data){
     ).join("")
   } else {
     card.style.display = "none"
+  }
+
+  // SEG Einheiten vor Ort
+  const segCard = document.getElementById("seg-card")
+  const segList = document.getElementById("seg-list")
+  const segVorOrt = data.segVorOrt || []
+  if(segVorOrt.length > 0){
+    segCard.style.display = "block"
+    segList.innerHTML = segVorOrt.map(s =>
+      `<div class="seg-badge">✓ ${s}</div>`
+    ).join("")
+  } else {
+    segCard.style.display = "none"
   }
 
   // Zeitstempel
