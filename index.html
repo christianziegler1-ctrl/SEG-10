@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="light">
+<head>
+
+<meta charset="UTF-8">
+<title>Einsatzführung SEG-10</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="lib/styles.css">
+
+</head>
+
+<body>
+
+<header>
+
+<div class="logoBox">
+<img src="assets/logo.png" height="40">
+</div>
+
+<div class="titleBox">
+<h2>Einsatzführung SEG-10</h2>
+<div>Berufsrettung Wien · Magistratsabteilung 70</div>
+</div>
+
+<div class="headerRight">
+  <button class="themeToggle" onclick="toggleFullscreen()" id="fullscreenBtn" title="Vollbild">⛶</button>
+  <button class="themeToggle" onclick="toggleTheme()" title="Tag/Nacht">🌙</button>
+  <div class="creatorBox">
+    Ersteller: Christian Ziegler<br>
+    christian.ziegler@wien.gv.at
+  </div>
+</div>
+
+</header>
+
+
+
+<div class="layout">
+
+<!-- LINKS -->
+
+<div class="left">
+
+<div class="segButtons">
+<button class="seg">SEG-1</button>
+<button class="seg">SEG-3</button>
+<button class="seg">SEG-11</button>
+<button class="seg">MLS-Wien</button>
+<button class="seg">SEG-2</button>
+<button class="seg">SEG-10</button>
+<button class="seg">SEG-12</button>
+<button class="seg">ZTR-OA</button>
+</div>
+
+
+<div class="topRow">
+
+<div class="bereich bergetrupp">
+<div class="bheader">Bergetrupp</div>
+<div class="drop"></div>
+</div>
+
+<div id="vorsichtungContainer"></div>
+
+</div>
+
+
+<div id="pssContainer"></div>
+
+
+<div class="bereich">
+<div class="bheader unit">SEG-21</div>
+<div class="patients" data-unit="21">0</div>
+<input class="adressfeld" placeholder="Adresse / Standort…">
+<div class="drop"></div>
+</div>
+
+
+<div class="bereich">
+<div class="bheader unit">SEG-22</div>
+<div class="patients" data-unit="22">0</div>
+<input class="adressfeld" placeholder="Adresse / Standort…">
+<div class="drop"></div>
+</div>
+
+
+<div class="bereich">
+<div class="bheader unit">SEG-EVAK</div>
+<div class="patients" data-unit="EVAK">0</div>
+<input class="adressfeld" placeholder="Adresse / Standort…">
+<div class="drop"></div>
+</div>
+
+
+<div class="bereich blue">
+<div class="bheader">Transport</div>
+<div class="patients" data-unit="TRANSPORT">0</div>
+<input class="adressfeld" placeholder="Adresse / Standort…">
+<div class="drop"></div>
+</div>
+
+
+<div id="halteplaetze"></div>
+
+
+</div>
+
+
+
+<!-- MITTE -->
+
+<div class="middle">
+
+<div id="alarmBanner" style="display:none"></div>
+
+<div class="dashboard">
+
+<div id="dashVehicles"><div class="dashHeader"><b>Fahrzeuge</b><button class="dashInfoBtn" onclick="openFahrzeugHistorie()" title="Fahrzeughistorie">?</button></div></div>
+
+<div id="dashSEG"></div>
+
+<div id="dashPatients"></div>
+
+</div>
+
+<div class="bereich blue zufahrtContainer">
+
+<div class="bheader" style="display:none"></div>
+
+<div class="patients" data-unit="ZUFAHRT">0</div>
+
+<div id="zufahrt" class="zufahrt drop"></div>
+
+</div>
+
+<div id="berContainer"></div>
+
+<div id="abschnitteContainer"></div>
+
+
+</div>
+
+<!-- RECHTS -->
+
+<div class="right">
+
+<div class="vehiclePanel">
+
+<h3>Menü</h3>
+
+<div class="menuGrid">
+<button onclick="openVehicleMenu()">+ Fahrzeug</button>
+<button onclick="openPatientMenu()">+ Patient</button>
+<button onclick="openFuehrungskraftMenu()">+ Führungskraft</button>
+<button onclick="createAbschnitt()">+ Abschnitt</button>
+<button onclick="createVorsichtung()">Vorsichtung</button>
+<button onclick="createPSS()">PSS</button>
+<button onclick="createBER()">BER</button>
+<button onclick="createHalteplatz()">Halteplatz</button>
+<button onclick="openAlarmstufen()">Alarmstufen</button>
+<button class="exportBtn" onclick="exportEinsatz()">Export / Druck</button>
+<button onclick="startEinsatz()" style="color:var(--accent-green);border-color:rgba(26,122,82,0.4);background:rgba(26,122,82,0.07)">Einsatz starten</button>
+<button onclick="endEinsatz()" style="color:var(--accent-red);border-color:rgba(192,57,43,0.4);background:rgba(192,57,43,0.07)">Einsatz beenden</button>
+</div>
+
+<div id="timer">00:00:00</div>
+
+</div>
+
+
+
+<div class="funkPanel">
+
+<h3>Funkspruch</h3>
+
+<input id="funkVon" placeholder="VON">
+<input id="funkAn" placeholder="AN">
+<input id="funkText" placeholder="TEXT">
+
+<button onclick="sendFunk()">Senden</button>
+
+<div id="log"></div>
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<!-- POPUP PATIENTEN -->
+
+<div id="patientPopup" class="popup">
+
+  <div class="popupContent">
+
+    <h3>Patientenverwaltung</h3>
+
+    <input id="patientInput" type="number" placeholder="Anzahl">
+
+    <!-- SICHTUNG -->
+    <div class="sichtungRow">
+      <button class="sichtBtn sk1" onclick="setSichtung('SK1')">SK1</button>
+      <button class="sichtBtn sk2" onclick="setSichtung('SK2')">SK2</button>
+      <button class="sichtBtn sk3" onclick="setSichtung('SK3')">SK3</button>
+      <button class="sichtBtn sk4" onclick="setSichtung('SK4')">SK4</button>
+      <span id="sichtungLabel" class="sichtungLabel">–</span>
+    </div>
+    <button class="sichtSetzenBtn" onclick="sichtungSetzen()">Sichtung zuweisen</button>
+
+    <div class="popupButtons">
+
+<button onclick="patientAction('add')">Anlegen</button>
+<button onclick="patientAction('21')">SEG-21</button>
+<button onclick="patientAction('22')">SEG-22</button>
+<button onclick="patientAction('EVAK')">EVAK</button>
+<button onclick="patientAction('TRANSPORT')">Transport</button>
+<button onclick="patientAction('remove')">Transport beendet</button>
+<button onclick="patientAction('RUECK')">Rückführung</button>
+<button onclick="patientAction('DELETE')">Löschen</button>
+
+<button onclick="toggleVehicleSelect()">Fahrzeug</button>
+<button onclick="closePopup()">Schließen</button>
+</div>
+
+<div id="vehicleSelectBox" style="display:none;margin-top:10px">
+<select id="vehicleSelect" style="width:100%"></select>
+
+<button onclick="assignPatientsToVehicle()" style="margin-top:6px;width:100%">
+Patienten Fahrzeug zuweisen
+</button>
+</div>
+
+
+</div>
+
+</div>
+
+
+<!-- POPUP FAHRZEUG -->
+
+<div id="vehiclePopup" class="popup">
+
+<div class="popupContent">
+
+<h3>Fahrzeug erstellen</h3>
+
+<div class="popupButtons">
+<button onclick="createVehicle('RTW')">1 · RTW</button>
+<button onclick="createVehicle('KTW')">2 · KTW</button>
+<button onclick="createVehicle('NEF')">3 · NEF</button>
+<button onclick="createVehicle('FISU')">4 · FISU</button>
+<button onclick="createVehicle('NAH')">5 · NAH</button>
+<button onclick="closeVehicleMenu()">Schließen</button>
+</div>
+
+</div>
+
+</div>
+
+
+
+<!-- POPUP ALARMSTUFEN -->
+<div id="alarmPopup" class="popup">
+  <div class="popupContent alarmContent">
+    <div class="alarmTabs">
+      <button class="alarmTab active" onclick="switchAlarmTab('info')">ℹ Info &amp; Kräfte</button>
+      <button class="alarmTab" onclick="switchAlarmTab('aktiv')">⚡ Aktive Alarmstufe</button>
+    </div>
+
+    <!-- TAB: INFO -->
+    <div id="alarmTabInfo">
+      <div class="alarmHinweis">5 Alarmstufen – Bezeichnung und Kräfte hinterlegen.</div>
+      <div id="alarmStufen"></div>
+      <div class="alarmActions">
+        <button onclick="closeAlarmPopup()" style="grid-column:span 2">Speichern &amp; Schließen</button>
+      </div>
+    </div>
+
+    <!-- TAB: AKTIVE ALARMSTUFE -->
+    <div id="alarmTabAktiv" style="display:none">
+      <div class="alarmHinweis">Wähle die aktuell ausgerufene Alarmstufe aus. Sie wird im Dashboard angezeigt.</div>
+      <div id="alarmAuswahl"></div>
+      <div class="alarmActions" style="margin-top:14px">
+        <button onclick="alarmStufeDeaktivieren()">Alarmstufe aufheben</button>
+        <button onclick="closeAlarmPopup()">Schließen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- POPUP FAHRZEUGHISTORIE -->
+<div id="fahrzeugHistoriePopup" class="popup">
+  <div class="popupContent">
+    <h3>Fahrzeughistorie</h3>
+    <div id="fahrzeugHistorieListe"></div>
+    <div style="margin-top:14px">
+      <button onclick="document.getElementById('fahrzeugHistoriePopup').style.display='none'" style="width:100%;padding:10px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:var(--bg-card);color:var(--text-primary);border:1.5px solid var(--border);border-radius:6px;cursor:pointer;">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<!-- POPUP FÜHRUNGSKRAFT -->
+<div id="fuehrungskraftPopup" class="popup">
+<div class="popupContent">
+<h3>Führungskraft erstellen</h3>
+<div class="popupButtons">
+<button onclick="createFuehrungskraft('GRKDT')">GRKDT</button>
+<button onclick="createFuehrungskraft('ZGKDT')">ZGKDT</button>
+<button onclick="createFuehrungskraft('HIO')">HIO</button>
+<button onclick="createFuehrungskraft('SAN-Team-HIO')">SAN-Team-HIO</button>
+<button onclick="closeFuehrungskraftMenu()" style="grid-column:span 2">Schließen</button>
+</div>
+</div>
+</div>
+
+<!-- POPUP ABSCHNITT -->
+<div id="abschnittPopup" class="popup">
+<div class="popupContent">
+<h3>Einsatzabschnitt benennen</h3>
+<input id="abschnittNameInput" placeholder="z.B. Abschnitt Nord…" style="width:100%;padding:10px 12px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:5px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;margin-bottom:12px;outline:none;">
+<div class="popupButtons">
+<button onclick="abschnittErstellen()">Erstellen</button>
+<button onclick="document.getElementById('abschnittPopup').style.display='none'">Abbrechen</button></div>
+</div>
+</div>
+
+
+<!-- POPUP NAMENSEINGABE (ersetzt prompt, verhindert Vollbild-Abbruch) -->
+<div id="namePopup" class="popup">
+  <div class="popupContent" style="width:clamp(280px,22vw,360px)">
+    <h3 id="namePopupTitle">Name eingeben</h3>
+    <input id="namePopupInput" type="text" placeholder="Kennung…"
+      style="width:100%;padding:10px 12px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:5px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;margin-bottom:12px;outline:none;letter-spacing:1px;">
+    <div class="popupButtons">
+      <button onclick="namePopupConfirm()">OK</button>
+      <button onclick="namePopupCancel()">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<div id="autosaveIndicator">Autosave aktiv</div>
+
+<!-- SHORTCUT OVERLAY -->
+<div id="shortcutOverlay" class="popup" onclick="this.style.display='none'">
+  <div class="popupContent" onclick="event.stopPropagation()" style="width:clamp(340px,32vw,500px);max-height:80vh;overflow-y:auto">
+    <h3>⌨ Shortcuts</h3>
+    <div id="shortcutList"></div>
+    <div style="margin-top:12px">
+      <button onclick="document.getElementById('shortcutOverlay').style.display='none'" style="width:100%;padding:9px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:var(--bg-card);color:var(--text-primary);border:1.5px solid var(--border);border-radius:6px;cursor:pointer;">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<script src="lib/app.js"></script>
+
+</body>
+</html>

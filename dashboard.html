@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEG-10 Live Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    background: #0d0f14;
+    color: #e8ecf4;
+    min-height: 100vh;
+    padding: 12px;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: #141720;
+    border-bottom: 3px solid #e63946;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+
+  header h1 {
+    font-size: clamp(14px, 3vw, 20px);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #e8ecf4;
+  }
+
+  #status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #4a5268;
+    text-align: right;
+  }
+
+  #status.online { color: #2ec4b6; }
+  #status.offline { color: #e63946; }
+
+  #alarmBanner {
+    display: none;
+    background: rgba(230,57,70,0.15);
+    border: 2px solid #e63946;
+    border-radius: 8px;
+    padding: 12px 18px;
+    text-align: center;
+    font-size: clamp(16px, 4vw, 24px);
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #e63946;
+    margin-bottom: 12px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(230,57,70,0.3); }
+    50% { box-shadow: 0 0 20px rgba(230,57,70,0.5); }
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  @media(min-width: 600px){
+    .grid { grid-template-columns: 1fr 1fr 1fr; }
+  }
+
+  .card {
+    background: #1a1f2e;
+    border: 1.5px solid #2a3048;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .card-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #4895ef;
+    border-bottom: 1.5px solid #2a3048;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+  }
+
+  .card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    font-size: clamp(13px, 2.5vw, 16px);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .card-row:last-child { border-bottom: none; }
+
+  .val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(14px, 2.8vw, 18px);
+    font-weight: 700;
+    color: #e8ecf4;
+  }
+
+  .val.big {
+    font-size: clamp(22px, 5vw, 36px);
+    color: #f4d35e;
+  }
+
+  .sk1 { color: #e63946; font-weight: 700; }
+  .sk2 { color: #f4a261; font-weight: 700; }
+  .sk3 { color: #2ec4b6; font-weight: 700; }
+  .sk4 { color: #4a5268; }
+
+  #timer-display {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(28px, 7vw, 52px);
+    color: #2ec4b6;
+    letter-spacing: 4px;
+    text-align: center;
+    padding: 10px;
+    text-shadow: 0 0 20px rgba(46,196,182,0.4);
+  }
+
+  #bereiche-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .bereich-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: #141720;
+    border-radius: 5px;
+    font-size: clamp(12px, 2.2vw, 15px);
+  }
+
+  .bereich-row .bval {
+    font-family: 'Share Tech Mono', monospace;
+    font-weight: 700;
+    color: #f4d35e;
+  }
+
+  #no-data {
+    text-align: center;
+    padding: 40px;
+    color: #4a5268;
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+
+  #main { display: none; }
+
+  footer {
+    text-align: center;
+    color: #2a3048;
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin-top: 14px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div style="font-size:9px;letter-spacing:2px;color:#4a5268;text-transform:uppercase">Berufsrettung Wien · MA 70</div>
+    <h1>SEG-10 Live</h1>
+  </div>
+  <div id="status">● Verbinde…</div>
+</header>
+
+<div id="alarmBanner"></div>
+
+<div id="no-data">Warte auf Daten vom SEG-10…</div>
+
+<div id="main">
+
+  <div style="text-align:center;margin-bottom:10px">
+    <div style="font-size:10px;letter-spacing:2px;color:#4a5268;text-transform:uppercase;margin-bottom:4px">Einsatzzeit</div>
+    <div id="timer-display">00:00:00</div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-title">Fahrzeuge</div>
+      <div class="card-row"><span>RTW</span><span class="val" id="d-rtw">0</span></div>
+      <div class="card-row"><span>KTW</span><span class="val" id="d-ktw">0</span></div>
+      <div class="card-row"><span>NEF</span><span class="val" id="d-nef">0</span></div>
+      <div class="card-row"><span>FISU</span><span class="val" id="d-fisu">0</span></div>
+      <div class="card-row"><span>NAH</span><span class="val" id="d-nah">0</span></div>
+      <div class="card-row"><span>FK</span><span class="val" id="d-fk">0</span></div>
+      <div class="card-row" style="margin-top:4px;border-top:1px solid #2a3048;padding-top:6px">
+        <span style="font-weight:700">Gesamt</span>
+        <span class="val big" id="d-total">0</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Patienten</div>
+      <div class="card-row"><span>Gesamt</span><span class="val big" id="d-pat-gesamt">0</span></div>
+      <div class="card-row"><span class="sk1">SK1 Sofort</span><span class="val sk1" id="d-sk1">0</span></div>
+      <div class="card-row"><span class="sk2">SK2 Dringend</span><span class="val sk2" id="d-sk2">0</span></div>
+      <div class="card-row"><span class="sk3">SK3 Leicht</span><span class="val sk3" id="d-sk3">0</span></div>
+      <div class="card-row"><span class="sk4">SK4</span><span class="val sk4" id="d-sk4">0</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Bereiche</div>
+      <div class="card-row"><span>PSS</span><span class="val" id="d-pss">–</span></div>
+      <div class="card-row"><span>Vorsichtung</span><span class="val" id="d-vor">–</span></div>
+      <div class="card-row"><span>BER</span><span class="val" id="d-ber">–</span></div>
+      <div class="card-row"><span>SEG-21</span><span class="val" id="d-s21">0</span></div>
+      <div class="card-row"><span>SEG-22</span><span class="val" id="d-s22">0</span></div>
+      <div class="card-row"><span>EVAK</span><span class="val" id="d-evak">0</span></div>
+      <div class="card-row"><span>Transport</span><span class="val" id="d-transport">0</span></div>
+    </div>
+
+  </div>
+
+  <div class="card" id="bereiche-card" style="display:none;margin-bottom:10px">
+    <div class="card-title">Halteplätze &amp; Abschnitte</div>
+    <div id="bereiche-list"></div>
+  </div>
+
+</div>
+
+<footer>LETZTE AKTUALISIERUNG: <span id="lastUpdate">–</span></footer>
+
+<script>
+// =============================================
+// FIREBASE URL hier eintragen (gleiche wie in app.js)
+// =============================================
+const FIREBASE_URL = "https://seg-10-dashboard-default-rtdb.europe-west1.firebasedatabase.app/" // z.B. "https://seg10-xxxxx-default-rtdb.europe-west1.firebasedatabase.app"
+
+const statusEl = document.getElementById("status")
+
+function updateUI(data){
+  if(!data){ return }
+
+  document.getElementById("no-data").style.display = "none"
+  document.getElementById("main").style.display = "block"
+
+  // Alarm
+  const banner = document.getElementById("alarmBanner")
+  if(data.alarm){
+    banner.style.display = "block"
+    banner.textContent = "⚡ " + data.alarm
+  } else {
+    banner.style.display = "none"
+  }
+
+  // Timer
+  document.getElementById("timer-display").textContent = data.timer || "00:00:00"
+
+  // Fahrzeuge
+  const f = data.fahrzeuge || {}
+  document.getElementById("d-rtw").textContent   = f.rtw   || 0
+  document.getElementById("d-ktw").textContent   = f.ktw   || 0
+  document.getElementById("d-nef").textContent   = f.nef   || 0
+  document.getElementById("d-fisu").textContent  = f.fisu  || 0
+  document.getElementById("d-nah").textContent   = f.nah   || 0
+  document.getElementById("d-fk").textContent    = f.fk    || 0
+  document.getElementById("d-total").textContent = f.gesamt || 0
+
+  // Patienten
+  const p = data.patienten || {}
+  document.getElementById("d-pat-gesamt").textContent = p.gesamt || 0
+  document.getElementById("d-sk1").textContent = p.sk1 || 0
+  document.getElementById("d-sk2").textContent = p.sk2 || 0
+  document.getElementById("d-sk3").textContent = p.sk3 || 0
+  document.getElementById("d-sk4").textContent = p.sk4 || 0
+  document.getElementById("d-pss").textContent       = p.pss       !== undefined ? p.pss       : "–"
+  document.getElementById("d-vor").textContent       = p.vorsichtung !== undefined ? p.vorsichtung : "–"
+  document.getElementById("d-ber").textContent       = p.ber       !== undefined ? p.ber       : "–"
+  document.getElementById("d-s21").textContent       = p.seg21     || 0
+  document.getElementById("d-s22").textContent       = p.seg22     || 0
+  document.getElementById("d-evak").textContent      = p.evak      || 0
+  document.getElementById("d-transport").textContent = p.transport || 0
+
+  // Halteplätze & Abschnitte
+  const bereiche = data.bereiche || []
+  const card = document.getElementById("bereiche-card")
+  const list = document.getElementById("bereiche-list")
+  if(bereiche.length > 0){
+    card.style.display = "block"
+    list.innerHTML = bereiche.map(b =>
+      `<div class="bereich-row"><span>${b.name}</span><span class="bval">${b.fzg} Einh.</span></div>`
+    ).join("")
+  } else {
+    card.style.display = "none"
+  }
+
+  // Zeitstempel
+  if(data.ts){
+    const d = new Date(data.ts)
+    document.getElementById("lastUpdate").textContent = d.toLocaleTimeString("de-AT")
+  }
+}
+
+async function fetchData(){
+  if(!FIREBASE_URL){
+    statusEl.textContent = "⚠ Keine Firebase URL"
+    statusEl.className = "offline"
+    return
+  }
+  try {
+    const res = await fetch(FIREBASE_URL + "/dashboard.json?t=" + Date.now())
+    if(!res.ok) throw new Error(res.status)
+    const data = await res.json()
+    updateUI(data)
+    statusEl.textContent = "● LIVE"
+    statusEl.className = "online"
+  } catch(e) {
+    statusEl.textContent = "● Keine Verbindung"
+    statusEl.className = "offline"
+  }
+}
+
+// Beim Laden + alle 5 Sekunden aktualisieren
+fetchData()
+setInterval(fetchData, 5000)
+</script>
+</body>
+</html>
