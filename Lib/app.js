@@ -1,949 +1,1479 @@
 /* =========================================================
-   EINSATZBOARD – APP.JS  v8
+   EINSATZBOARD v6 – CSS
+   Tag/Nacht · Lesbar · Professionell
 ========================================================= */
 
-let dragged = null
-let halteplatzCount = 0
-let abschnittCount = 0
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
 
-let totalPatients = 0
-let currentPatientBox = null
+/* =========================================================
+   LIGHT THEME – Standard
+========================================================= */
+:root, [data-theme="light"] {
+  --bg-base:        #e8ecf2;
+  --bg-panel:       #f4f6fa;
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #f0f4fb;
+  --border:         #c8d0de;
+  --border-bright:  #9aaac0;
 
-let einsatzAktiv = false
-let autosaveTimer = null
-let einsatzDateiHandle = null
-let letzterAutosave = null
+  --text-primary:   #0f1623;
+  --text-secondary: #3a4560;
+  --text-dim:       #8a96a8;
 
-let einsatzStartZeit = null
-let timerInterval = null
+  --accent-red:     #c0392b;
+  --accent-green:   #1a7a52;
+  --accent-blue:    #1a56db;
+  --accent-yellow:  #c47d00;
 
-let eventLog = []
-let vehicleHotkeysActive = false
+  --veh-inactive:   #b03030;
+  --veh-active:     #1a7a52;
 
-let currentSichtung = null
-let sichtungCounts = { SK1: 0, SK2: 0, SK3: 0, SK4: 0 }
+  --glow-red:   0 0 0 3px rgba(192,57,43,0.18);
+  --glow-green: 0 0 0 3px rgba(26,122,82,0.18);
+  --glow-blue:  0 0 0 3px rgba(26,86,219,0.18);
 
-let alarmstufen = []
-let aktiveAlarmstufe = null
-
-let fahrzeugLog = {}
-
-document.addEventListener("DOMContentLoaded", () => {
-  initDrag()
-  initSEG()
-  initEnter()
-  initPatients()
-  initShortcuts()
-  document.querySelectorAll(".patients").forEach(p => {
-    if(!p.dataset.manual) p.dataset.manual = p.innerText.trim() || "0"
-  })
-  updatePatients()
-  initReloadProtection()
-  renderShortcutList()
-})
-
-/* VOLLBILD */
-function toggleFullscreen(){
-  if(!document.fullscreenElement){
-    document.documentElement.requestFullscreen().catch(err=>console.warn(err))
-  }else{
-    document.exitFullscreen()
-  }
-}
-document.addEventListener("fullscreenchange", ()=>{
-  const btn = document.getElementById("fullscreenBtn")
-  if(!btn) return
-  btn.textContent = document.fullscreenElement ? "✕" : "⛶"
-  btn.title = document.fullscreenElement ? "Vollbild beenden" : "Vollbild"
-})
-
-/* DRAG & DROP */
-function initDrag(){
-  document.querySelectorAll(".bereich, .zufahrt").forEach(area=>{
-    area.addEventListener("dragover", e=>e.preventDefault())
-    area.addEventListener("drop", e=>{
-      e.preventDefault()
-      if(!dragged) return
-      let drop = area.querySelector(".drop")
-      if(drop){
-        drop.appendChild(dragged)
-        sortVehicles(drop)
-      }else{
-        area.appendChild(dragged)
-      }
-      const itemName = dragged.dataset.fkName || dragged.children[2]?.innerText || dragged.children[1]?.innerText || "Element"
-      const ziel = area.querySelector(".bheader")?.innerText || area.querySelector(".abschnittName")?.value || (area.id==="zufahrt" ? "Zufahrt" : "Unbekannt")
-      logEvent(itemName + " verschoben nach: " + ziel)
-      updatePatients()
-      saveState()
-    })
-  })
+  --grid-line: rgba(26,86,219,0.04);
+  --shadow:    0 1px 4px rgba(0,0,0,0.10);
+  --shadow-md: 0 3px 12px rgba(0,0,0,0.13);
 }
 
-/* FAHRZEUG MENU */
-function openVehicleMenu(){
-  closePopup()
-  vehicleHotkeysActive = true
-  document.getElementById("vehiclePopup").style.display="flex"
-}
-function closeVehicleMenu(){
-  vehicleHotkeysActive = false
-  document.getElementById("vehiclePopup").style.display="none"
+/* =========================================================
+   DARK THEME
+========================================================= */
+[data-theme="dark"] {
+  --bg-base:        #0d0f14;
+  --bg-panel:       #141720;
+  --bg-card:        #1a1f2e;
+  --bg-card-hover:  #1f2537;
+  --border:         #2a3048;
+  --border-bright:  #3d4a6a;
+
+  --text-primary:   #e8ecf4;
+  --text-secondary: #8a94a8;
+  --text-dim:       #4a5268;
+
+  --accent-red:     #e63946;
+  --accent-green:   #2ec4b6;
+  --accent-blue:    #4895ef;
+  --accent-yellow:  #f4d35e;
+
+  --veh-inactive:   #b03030;
+  --veh-active:     #1e8449;
+
+  --glow-red:   0 0 14px rgba(230,57,70,0.4);
+  --glow-green: 0 0 14px rgba(46,196,182,0.4);
+  --glow-blue:  0 0 14px rgba(72,149,239,0.4);
+
+  --grid-line: rgba(72,149,239,0.025);
+  --shadow:    0 1px 4px rgba(0,0,0,0.4);
+  --shadow-md: 0 3px 12px rgba(0,0,0,0.5);
 }
 
-/* FUEHRUNGSKRAFT MENU */
-function openFuehrungskraftMenu(){
-  closePopup()
-  document.getElementById("fuehrungskraftPopup").style.display="flex"
-}
-function closeFuehrungskraftMenu(){
-  document.getElementById("fuehrungskraftPopup").style.display="none"
-}
-function createFuehrungskraft(typ){
-  closeFuehrungskraftMenu()
-  openNamePopup(typ + " – Name (optional)", "", function(name){
-    name = name || ""
-    const fk = document.createElement("div")
-    fk.className = "fuehrungskraft"
-    fk.draggable = true
-    fk.dataset.id = Date.now() + Math.random()
-    fk.dataset.fkName = name ? (typ + " " + name) : typ
-    fk.innerHTML = '<div class="deleteFk">X</div><div class="fkTyp">' + typ + '</div>' + (name ? '<div class="fkName">' + name + '</div>' : '')
-    fk.querySelector(".deleteFk").onclick = (e) => {
-      e.stopPropagation()
-      logEvent("Fuehrungskraft entfernt: " + fk.dataset.fkName)
-      fk.remove()
-      saveState()
-    }
-    fk.addEventListener("dragstart", ()=>{ dragged = fk })
-    logEvent("Fuehrungskraft erstellt: " + fk.dataset.fkName)
-    document.getElementById("zufahrt").appendChild(fk)
-    saveState()
-  }, true) // optional = true
+/* =========================================================
+   RESET
+========================================================= */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100vh;
+  transition: background 0.25s, color 0.25s;
 }
 
-/* EIGENES NAME-POPUP statt prompt() – verhindert Vollbild-Abbruch */
-let _namePopupCallback = null
-let _namePopupOptional = false
-
-function openNamePopup(title, placeholder, callback, optional){
-  _namePopupCallback = callback
-  _namePopupOptional = optional || false
-  const popup = document.getElementById("namePopup")
-  document.getElementById("namePopupTitle").textContent = title
-  const input = document.getElementById("namePopupInput")
-  input.value = ""
-  input.placeholder = optional ? "(optional, Enter zum Ueberspringen)" : placeholder
-  popup.style.display = "flex"
-  setTimeout(()=>input.focus(), 50)
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
 }
 
-function namePopupConfirm(){
-  const val = document.getElementById("namePopupInput").value.trim()
-  if(!_namePopupOptional && !val) return
-  document.getElementById("namePopup").style.display = "none"
-  if(_namePopupCallback) _namePopupCallback(val)
-  _namePopupCallback = null
+/* =========================================================
+   HEADER
+========================================================= */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 18px;
+  height: 62px;
+  background: var(--bg-panel);
+  border-bottom: 3px solid var(--accent-red);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  z-index: 10;
+  transition: background 0.25s;
 }
 
-function namePopupCancel(){
-  document.getElementById("namePopup").style.display = "none"
-  _namePopupCallback = null
+[data-theme="dark"] .logoBox img { filter: brightness(1.2); }
+
+.titleBox { text-align: center; flex: 1; }
+
+.titleBox h2 {
+  font-weight: 700;
+  font-size: 21px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-primary);
 }
 
-document.addEventListener("DOMContentLoaded", ()=>{
-  document.getElementById("namePopupInput")?.addEventListener("keydown", (e)=>{
-    if(e.key === "Enter"){ e.preventDefault(); namePopupConfirm() }
-    if(e.key === "Escape"){ e.preventDefault(); namePopupCancel() }
-  })
-})
-
-/* FAHRZEUG ERSTELLEN */
-function createVehicle(type){
-  closeVehicleMenu()
-  openNamePopup(type + " Kennung eingeben", "", function(name){
-    if(!name || !name.trim()) return
-    name = name.trim()
-    let v = document.createElement("div")
-    v.className = "vehicle " + type
-    v.draggable = true
-    v.dataset.id = Date.now() + Math.random()
-    v.innerHTML = '<div class="deleteVehicle">X</div><div>' + type + '</div><div>' + name + '</div>'
-    v.querySelector(".deleteVehicle").onclick = (e) => {
-      e.stopPropagation()
-      delete fahrzeugLog[v.dataset.id]
-      logEvent("Fahrzeug geloescht: " + name)
-      v.remove()
-      updatePatients()
-      saveState()
-    }
-    v.addEventListener("dragstart", ()=>{ dragged = v })
-    v.onclick = (e) => {
-      if(e.target.classList.contains("patBadge") || e.target.classList.contains("deleteVehicle")) return
-      v.classList.toggle("active")
-      const fLog = fahrzeugLog[v.dataset.id]
-      if(v.classList.contains("active")){
-        if(fLog){ fLog.eingetroffen = new Date().toLocaleTimeString(); fLog.aktiv = true }
-        logEvent("Fahrzeug eingetroffen: " + name)
-      }else{
-        if(fLog) fLog.aktiv = false
-        logEvent("Fahrzeug Einsatz beendet: " + name)
-      }
-      saveState()
-    }
-    document.getElementById("zufahrt").appendChild(v)
-    sortVehicles(document.getElementById("zufahrt"))
-    fahrzeugLog[v.dataset.id] = { name, type, zeit: new Date().toLocaleTimeString(), aktiv: false }
-    logEvent("Fahrzeug erstellt: " + type + " " + name)
-    updatePatients()
-    saveState()
-  }, false) // optional = false, Eingabe pflicht
+.titleBox div {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
 }
 
-/* SEG BUTTONS */
-function initSEG(){
-  document.querySelectorAll(".seg").forEach(btn=>{
-    btn.onclick=()=>{
-      btn.classList.toggle("active")
-      const text = btn.innerText.trim()
-      logEvent(btn.classList.contains("active") ? "SEG aktiviert: " + text : "SEG deaktiviert: " + text)
-      saveState()
-    }
-  })
-  document.querySelectorAll(".unit").forEach(h=>{
-    h.onclick=()=>{
-      h.classList.toggle("active")
-      const text = h.innerText.trim()
-      logEvent(h.classList.contains("active") ? "Bereich aktiviert: " + text : "Bereich deaktiviert: " + text)
-      saveState()
-    }
-  })
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-/* HALTEPLATZ */
-function createHalteplatz(){
-  halteplatzCount++
-  let hp = document.createElement("div")
-  hp.className = "bereich"
-  hp.innerHTML = '<div class="deleteHP">X</div><div class="bheader">Halteplatz ' + halteplatzCount + '</div><input class="adressfeld" placeholder="Adresse / Standort\u2026"><div class="drop"></div>'
-  hp.querySelector(".deleteHP").onclick = (e) => {
-    e.stopPropagation()
-    retteZuZufahrt(hp)
-    hp.remove()
-    logEvent("Halteplatz geloescht")
-    saveState()
-  }
-  document.getElementById("halteplaetze").appendChild(hp)
-  logEvent("Halteplatz erstellt: Halteplatz " + halteplatzCount)
-  initDrag()
-  saveState()
+.creatorBox {
+  font-size: 11px;
+  text-align: right;
+  color: var(--text-dim);
+  line-height: 1.7;
+  font-family: 'Share Tech Mono', monospace;
 }
 
-/* EINSATZABSCHNITT */
-function createAbschnitt(){
-  abschnittCount++
-  const ab = document.createElement("div")
-  ab.className = "bereich abschnitt"
-  ab.innerHTML =
-    '<div class="deleteHP">X</div>' +
-    '<div class="abschnittHeader"><input class="abschnittName" value="Abschnitt ' + abschnittCount + '" placeholder="Abschnitt benennen\u2026"></div>' +
-    '<input class="adressfeld" placeholder="Adresse / Standort\u2026">' +
-    '<div class="drop"></div>'
-  ab.querySelector(".deleteHP").onclick = (e) => {
-    e.stopPropagation()
-    retteZuZufahrt(ab)
-    logEvent("Abschnitt geloescht")
-    ab.remove()
-    saveState()
-  }
-  document.getElementById("abschnitteContainer").appendChild(ab)
-  logEvent("Abschnitt erstellt: Abschnitt " + abschnittCount)
-  initDrag()
-  saveState()
+.themeToggle {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.themeToggle:hover { border-color: var(--accent-blue); box-shadow: var(--glow-blue); }
+
+/* =========================================================
+   LAYOUT
+========================================================= */
+.layout {
+  display: grid;
+  grid-template-columns: 40% 35% 25%;
+  height: calc(100vh - 62px);
+  position: relative;
+  z-index: 1;
 }
 
-/* VORSICHTUNG */
-function createVorsichtung(){
-  if(document.getElementById("vorsichtung")) return
-  let v = document.createElement("div")
-  v.className = "bereich"
-  v.id = "vorsichtung"
-  v.innerHTML = '<div class="deleteHP">X</div><div class="bheader unit">Vorsichtung</div><div class="patients" data-unit="VORSICHT">0</div><input class="adressfeld" placeholder="Adresse / Standort\u2026"><div class="drop"></div>'
-  v.querySelector(".deleteHP").onclick = (e) => {
-    e.stopPropagation()
-    retteZuZufahrt(v)
-    v.remove()
-    logEvent("Vorsichtung geloescht")
-    updateDashboard()
-    saveState()
-  }
-  document.getElementById("vorsichtungContainer").appendChild(v)
-  logEvent("Vorsichtung erstellt")
-  initDrag(); initPatients(); initSEG()
-  updateDashboard(); saveState()
+.left  { border-right: 2px solid var(--border); overflow-y: auto; padding: 12px 12px 12px 14px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.middle { border-right: 2px solid var(--border); }
+
+/* =========================================================
+   SEG BUTTONS
+========================================================= */
+.segButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
 }
 
-/* PSS */
-function createPSS(){
-  if(document.getElementById("pss")) return
-  let p = document.createElement("div")
-  p.className = "bereich"
-  p.id = "pss"
-  p.innerHTML = '<div class="deleteHP">X</div><div class="bheader unit">Patientensammelstelle</div><div class="patients" data-unit="PSS">0</div><input class="adressfeld" placeholder="Adresse / Standort\u2026"><div class="drop"></div>'
-  p.querySelector(".deleteHP").onclick = (e) => {
-    e.stopPropagation()
-    retteZuZufahrt(p)
-    p.remove()
-    logEvent("PSS geloescht")
-    updateDashboard(); saveState()
-  }
-  document.getElementById("pssContainer").appendChild(p)
-  logEvent("PSS erstellt")
-  initDrag(); initPatients(); initSEG()
-  updateDashboard(); saveState()
+.segButtons button {
+  background: rgba(192,57,43,0.08);
+  color: var(--accent-red);
+  border: 1.5px solid rgba(192,57,43,0.3);
+  padding: 8px 18px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 18px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+  transition: all 0.18s;
+}
+.segButtons button:hover { background: rgba(192,57,43,0.18); }
+
+.seg.active {
+  background: rgba(26,122,82,0.15) !important;
+  color: var(--accent-green) !important;
+  border-color: rgba(26,122,82,0.5) !important;
+  box-shadow: var(--glow-green);
 }
 
-/* BER */
-function createBER(){
-  if(document.getElementById("ber")) return
-  const ber = document.createElement("div")
-  ber.className = "bereich blue"
-  ber.id = "ber"
-  ber.innerHTML = '<div class="deleteHP">X</div><div class="bheader unit">BER \u2013 Bereitstellungsraum</div><div class="patients" data-unit="BER">0</div><input class="adressfeld" placeholder="Adresse / Standort\u2026"><div class="drop"></div>'
-  ber.querySelector(".deleteHP").onclick = (e) => {
-    e.stopPropagation()
-    retteZuZufahrt(ber)
-    ber.remove()
-    logEvent("BER geloescht")
-    updateDashboard(); saveState()
-  }
-  document.getElementById("berContainer").appendChild(ber)
-  logEvent("BER erstellt")
-  initDrag(); initPatients(); initSEG()
-  updateDashboard(); saveState()
+/* =========================================================
+   BEREICHE
+========================================================= */
+.bereich {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  margin-top: 9px;
+  min-height: 84px;
+  padding: 10px 10px 10px 12px;
+  position: relative;
+  overflow: visible;
+  transition: border-color 0.2s, background 0.25s;
+  box-shadow: var(--shadow);
+}
+.bereich:hover { border-color: var(--border-bright); }
+
+.bereich.blue {
+  border-left: 4px solid var(--accent-blue);
+  min-height: 100px;
 }
 
-/* FUNK */
-function initEnter(){
-  function handleEnter(e){ if(e.key==="Enter"){ e.preventDefault(); sendFunk() } }
-  document.getElementById("funkVon")?.addEventListener("keydown",handleEnter)
-  document.getElementById("funkAn")?.addEventListener("keydown",handleEnter)
-  document.getElementById("funkText")?.addEventListener("keydown",handleEnter)
+/* =========================================================
+   BEREICH HEADER
+========================================================= */
+.bheader {
+  display: inline-block;
+  background: rgba(192,57,43,0.1);
+  color: var(--accent-red);
+  border: 1.5px solid rgba(192,57,43,0.3);
+  padding: 5px 14px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all 0.18s;
 }
-function sendFunk(){
-  let von=document.getElementById("funkVon").value
-  let an=document.getElementById("funkAn").value
-  let text=document.getElementById("funkText").value
-  if(text==="") return
-  let time=new Date().toLocaleTimeString()
-  let line=document.createElement("div")
-  line.innerText=time+" | "+von+" \u2192 "+an+": "+text
-  document.getElementById("log").prepend(line)
-  logEvent("Funkspruch: "+von+" -> "+an+": "+text)
-  document.getElementById("funkText").value=""
-  document.getElementById("funkVon").value=""
-  document.getElementById("funkAn").value=""
-  saveState()
-}
-
-/* PATIENTEN */
-function initPatients(){
-  document.querySelectorAll(".patients").forEach(el=>{
-    el.onclick=(e)=>{
-      e.stopPropagation()
-      currentPatientBox=el
-      document.getElementById("patientInput").value=""
-      document.getElementById("patientPopup").style.display="flex"
-    }
-  })
-}
-function closePopup(){
-  document.getElementById("patientPopup").style.display="none"
-  document.getElementById("vehiclePopup").style.display="none"
-  const fp=document.getElementById("fuehrungskraftPopup")
-  if(fp) fp.style.display="none"
-  vehicleHotkeysActive=false
-  let box=document.getElementById("vehicleSelectBox")
-  if(box) box.style.display="none"
-  resetSichtungUI()
-}
-function patientAction(action){
-  const amount=parseInt(document.getElementById("patientInput").value)
-  if(!amount) return
-  if(!currentPatientBox) return
-  if(!currentPatientBox.classList.contains("patBadge")){
-    let currentManual=parseInt(currentPatientBox.dataset.manual||"0")||0
-    if(action==="add"){
-      currentPatientBox.dataset.manual=currentManual+amount
-      totalPatients+=amount
-      if(currentSichtung){
-        sichtungCounts[currentSichtung]=(sichtungCounts[currentSichtung]||0)+amount
-        currentPatientBox.dataset.sichtung=currentSichtung
-        logEvent("Patienten angelegt: "+amount+" ("+currentSichtung+")")
-      }else{ logEvent("Patienten angelegt: "+amount) }
-    }else if(action==="DELETE"){
-      let d=Math.min(amount,currentManual)
-      currentPatientBox.dataset.manual=currentManual-d
-      totalPatients=Math.max(0,totalPatients-d)
-      const ds=currentPatientBox.dataset.sichtung
-      if(ds&&sichtungCounts[ds]) sichtungCounts[ds]=Math.max(0,sichtungCounts[ds]-d)
-      logEvent("Patienten geloescht: "+d)
-    }else if(action==="remove"||action==="RUECK"){
-      currentPatientBox.dataset.manual=Math.max(0,currentManual-amount)
-      logEvent(action==="RUECK"?"Patienten Rueckfuehrung: "+amount:"Patienten entfernt: "+amount)
-    }else{
-      if(currentManual<amount) return
-      currentPatientBox.dataset.manual=currentManual-amount
-      document.querySelectorAll(".patients").forEach(p=>{
-        if(p.dataset.unit===action){ p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount }
-      })
-      logEvent("Patienten umverteilt -> "+action+": "+amount)
-    }
-  }else{
-    let current=parseInt(currentPatientBox.innerText)||0
-    if(action==="remove"||action==="RUECK"){
-      let nv=Math.max(0,current-amount)
-      if(nv===0){ currentPatientBox.remove() }else{ currentPatientBox.innerText=nv }
-      logEvent(action==="RUECK"?"Patienten Rueckfuehrung vom Fahrzeug: "+amount:"Patienten vom Fahrzeug entfernt: "+amount)
-    }else if(action==="EVAK"||action==="21"||action==="22"||action==="TRANSPORT"){
-      if(current<amount) return
-      currentPatientBox.innerText=current-amount
-      if((parseInt(currentPatientBox.innerText)||0)===0) currentPatientBox.remove()
-      document.querySelectorAll(".patients").forEach(p=>{
-        if(p.dataset.unit===action){ p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount }
-      })
-      logEvent("Patienten vom Fahrzeug umverteilt -> "+action+": "+amount)
-    }
-  }
-  updatePatients(); closePopup(); saveState()
-}
-function openPatientMenu(){
-  const zufahrtBox=document.querySelector('.patients[data-unit="ZUFAHRT"]')
-  currentPatientBox=zufahrtBox
-  document.getElementById("patientInput").value=""
-  closePopup()
-  document.getElementById("patientPopup").style.display="flex"
-}
-function toggleVehicleSelect(){
-  let box=document.getElementById("vehicleSelectBox")
-  box.style.display=box.style.display==="none"?"block":"none"
-  let select=document.getElementById("vehicleSelect")
-  select.innerHTML=""
-  document.querySelectorAll(".vehicle").forEach(v=>{
-    let name=v.children[2]?.innerText||v.children[1]?.innerText||"Fahrzeug"
-    let option=document.createElement("option")
-    option.value=v.dataset.id; option.text=name
-    select.appendChild(option)
-  })
-}
-function assignPatientsToVehicle(){
-  let amount=parseInt(document.getElementById("patientInput").value)
-  if(!amount||!currentPatientBox) return
-  if(!currentPatientBox.classList.contains("patBadge")){
-    let cm=parseInt(currentPatientBox.dataset.manual||"0")||0
-    if(cm<amount) return
-    currentPatientBox.dataset.manual=cm-amount
-  }else{
-    let c=parseInt(currentPatientBox.innerText)||0
-    if(c<amount) return
-    let nv=c-amount
-    if(nv===0){ currentPatientBox.remove() }else{ currentPatientBox.innerText=nv }
-  }
-  let id=document.getElementById("vehicleSelect").value
-  let vehicle=document.querySelector('[data-id="'+id+'"]')
-  if(!vehicle) return
-  let badge=vehicle.querySelector(".patBadge")
-  if(!badge){
-    badge=document.createElement("div")
-    badge.className="patBadge"
-    badge.onclick=(e)=>{ e.stopPropagation(); currentPatientBox=badge; document.getElementById("patientInput").value=""; document.getElementById("patientPopup").style.display="flex" }
-    vehicle.appendChild(badge)
-  }
-  badge.innerText=(parseInt(badge.innerText)||0)+amount
-  logEvent("Patienten auf Fahrzeug "+(vehicle.children[2]?.innerText||"Fahrzeug")+": "+amount)
-  updatePatients(); closePopup(); saveState()
-}
-function updatePatients(){
-  document.querySelectorAll(".patients").forEach(field=>{
-    let manual=parseInt(field.dataset.manual||"0")||0
-    let vehicleTotal=0
-    let unit=field.dataset.unit
-    if(unit==="ZUFAHRT"){
-      document.querySelectorAll("#zufahrt .vehicle").forEach(v=>{ let b=v.querySelector(".patBadge"); if(b) vehicleTotal+=parseInt(b.innerText)||0 })
-    }else{
-      field.parentElement.querySelectorAll(".vehicle").forEach(v=>{ let b=v.querySelector(".patBadge"); if(b) vehicleTotal+=parseInt(b.innerText)||0 })
-    }
-    let total=manual+vehicleTotal
-    field.innerText=total
-    if(unit==="ZUFAHRT") field.style.display=total===0?"none":"block"
-  })
-  updateDashboard()
+.bheader:hover { background: rgba(192,57,43,0.2); }
+.bheader.active {
+  background: rgba(26,122,82,0.12);
+  color: var(--accent-green);
+  border-color: rgba(26,122,82,0.45);
+  box-shadow: var(--glow-green);
 }
 
-/* SICHERHEIT: Fahrzeuge/FK bei Bereich-Loeschen zurueck in Zufahrt */
-function retteZuZufahrt(bereich){
-  const zufahrt = document.getElementById("zufahrt")
-  if(!zufahrt) return
-  const items = bereich.querySelectorAll(".vehicle, .fuehrungskraft")
-  if(items.length === 0) return
-  items.forEach(item => {
-    const name = item.classList.contains("fuehrungskraft")
-      ? (item.querySelector(".fkTyp")?.innerText || "FK")
-      : (item.children[2]?.innerText || "Fahrzeug")
-    zufahrt.appendChild(item)
-    logEvent(name + " -> Zufahrt gerettet")
-  })
-  sortVehicles(zufahrt)
-  updatePatients()
+/* =========================================================
+   DROP ZONE
+========================================================= */
+.drop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(10px, 0.9vw, 16px);
+  min-height: 44px;
+  padding: 6px 6px 10px 4px;
+  border-radius: 5px;
+  border: 1.5px dashed transparent;
+  transition: border-color 0.2s, background 0.2s;
+  overflow: visible;
+}
+.drop:hover {
+  border-color: var(--border-bright);
+  background: rgba(0,0,0,0.02);
 }
 
-function sortVehicles(container){
-  let items = [...container.querySelectorAll(".vehicle, .fuehrungskraft")]
-  items.sort((a, b) => {
-    const aFK = a.classList.contains("fuehrungskraft") ? 0 : 1
-    const bFK = b.classList.contains("fuehrungskraft") ? 0 : 1
-    if(aFK !== bFK) return aFK - bFK
-    const nA = (a.querySelector(".fkTyp") || a.children[2])?.innerText || ""
-    const nB = (b.querySelector(".fkTyp") || b.children[2])?.innerText || ""
-    return nA.localeCompare(nB)
-  })
-  items.forEach(v => container.appendChild(v))
+/* =========================================================
+   FAHRZEUGE
+========================================================= */
+.vehicle {
+  width: clamp(62px, 5vw, 90px);
+  height: clamp(44px, 3.8vh, 64px);
+  border-radius: 7px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  background: var(--veh-inactive);
+  cursor: grab;
+  position: relative;
+  transition: all 0.18s;
+  border: 2px solid rgba(255,255,255,0.15);
+  box-shadow: var(--shadow-md);
+}
+.vehicle:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
+.vehicle:active { cursor: grabbing; transform: scale(0.97); }
+
+.vehicle.active {
+  background: var(--veh-active) !important;
+  border-color: rgba(255,255,255,0.3);
+  box-shadow: 0 0 0 3px rgba(26,122,82,0.35), var(--shadow-md);
 }
 
-/* DASHBOARD */
-function updateDashboard(){
-  const rtw=document.querySelectorAll(".vehicle.RTW").length
-  const ktw=document.querySelectorAll(".vehicle.KTW").length
-  const nef=document.querySelectorAll(".vehicle.NEF").length
-  const fisu=document.querySelectorAll(".vehicle.FISU").length
-  const nah=document.querySelectorAll(".vehicle.NAH").length
-  const totalVehicles=document.querySelectorAll(".vehicle").length
+/* Alle Typen: gleiche Grundfarbe (Rot = nicht da) */
+.vehicle.RTW,
+.vehicle.KTW,
+.vehicle.NEF,
+.vehicle.FISU,
+.vehicle.NAH { background: var(--veh-inactive); }
 
-  // Alarmstufe Banner – nutzt das fest im HTML verankerte Element
-  const banner = document.getElementById("alarmBanner")
-  if(banner){
-    if(aktiveAlarmstufe !== null && alarmstufen[aktiveAlarmstufe]){
-      const stufe = alarmstufen[aktiveAlarmstufe]
-      banner.style.display = "block"
-      banner.innerHTML = "&#9889; ALARMSTUFE "+(aktiveAlarmstufe+1)+" – "+(stufe.titel || "Alarmstufe "+(aktiveAlarmstufe+1))
-    } else {
-      banner.style.display = "none"
-    }
-  }
+/* kleiner Typ-Indikator oben */
+.vehicle .vType {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.75;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+.vehicle .vName {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
 
-  let vEl=document.getElementById("dashVehicles")
-  let vContent=vEl.querySelector(".dashVehiclesContent")
-  if(!vContent){ vContent=document.createElement("div"); vContent.className="dashVehiclesContent"; vEl.appendChild(vContent) }
-  const totalFK = document.querySelectorAll(".fuehrungskraft").length
-  vContent.innerHTML="RTW: "+rtw+"<br>KTW: "+ktw+"<br>NEF: "+nef+"<br>FISU: "+fisu+"<br>NAH: "+nah+"<br>Fzg. Gesamt: <strong>"+totalVehicles+"</strong><br>FK Einheiten: <strong>"+totalFK+"</strong>"
+/* Sichtungsstreifen */
+.vehicle .sichtStripe {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 5px; border-radius: 6px 6px 0 0;
+}
+.sichtStripe.SK1 { background: #e74c3c; }
+.sichtStripe.SK2 { background: #e67e22; }
+.sichtStripe.SK3 { background: #27ae60; }
+.sichtStripe.SK4 { background: #555; }
 
-  function vu(unit){ const b=document.querySelector('[data-unit="'+unit+'"]'); return b?b.parentElement.querySelectorAll(".vehicle").length:0 }
-  let segRows="<b>Fzg. nach Bereich</b><br>SEG-21: "+vu("21")+"<br>SEG-22: "+vu("22")+"<br>EVAK: "+vu("EVAK")+"<br>Transport: "+vu("TRANSPORT")
-  document.querySelectorAll("#halteplaetze .bereich").forEach(hp=>{
-    const label=hp.querySelector(".bheader")?.innerText||"HP"
-    segRows+="<br>"+label+": "+hp.querySelectorAll(".vehicle").length
-  })
-  document.querySelectorAll("#abschnitteContainer .abschnitt").forEach(ab=>{
-    const label=ab.querySelector("[contenteditable]")?.innerText||"Abschnitt"
-    segRows+="<br>"+label+": "+ab.querySelectorAll(".vehicle, .fuehrungskraft").length
-  })
-  document.getElementById("dashSEG").innerHTML=segRows
+/* =========================================================
+   PATIENT BADGE (auf Fahrzeug)
+========================================================= */
+.patBadge {
+  position: absolute; right: 3px; bottom: 3px;
+  background: var(--accent-yellow);
+  color: #000;
+  font-weight: 700; font-size: clamp(9px, 0.65vw, 12px);
+  padding: 1px 5px;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  cursor: pointer;
+  font-family: 'Share Tech Mono', monospace;
+  z-index: 3;
+  line-height: 1.4;
+}
 
-  function pu(unit){ const el=document.querySelector('[data-unit="'+unit+'"]'); return el?(parseInt(el.innerText)||0):null }
-  let patRows="<b>Patienten</b><br>Gesamt: <strong>"+totalPatients+"</strong>"
-  const pPSS=pu("PSS"); if(pPSS!==null) patRows+="<br>PSS: "+pPSS
-  const pVor=pu("VORSICHT"); if(pVor!==null) patRows+="<br>Vorsichtung: "+pVor
-  const pBER=pu("BER"); if(pBER!==null) patRows+="<br>BER: "+pBER
-  patRows+="<br>SEG-21: "+(pu("21")??0)+"<br>SEG-22: "+(pu("22")??0)+"<br>EVAK: "+(pu("EVAK")??0)+"<br>Transport: "+(pu("TRANSPORT")??0)
-  patRows+='<br><span class="dash-sk1">SK1: '+sichtungCounts.SK1+'</span>'
-  patRows+='<br><span class="dash-sk2">SK2: '+sichtungCounts.SK2+'</span>'
-  patRows+='<br><span class="dash-sk3">SK3: '+sichtungCounts.SK3+'</span>'
-  patRows+='<br><span class="dash-sk4">SK4: '+sichtungCounts.SK4+'</span>'
-  document.getElementById("dashPatients").innerHTML=patRows
-  syncToFirebase()
+/* =========================================================
+   PATIENTEN BOX (auf Bereich)
+========================================================= */
+.patients {
+  position: absolute;
+  right: 10px; top: 50%;
+  transform: translateY(-50%);
+  background: var(--accent-yellow);
+  color: #111;
+  padding: 8px 16px;
+  font-size: 26px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 14px;
+  z-index: 5;
+  font-family: 'Share Tech Mono', monospace;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.22);
+  transition: transform 0.15s, box-shadow 0.15s;
+  min-width: 54px;
+  text-align: center;
+  line-height: 1;
+  border: 2px solid rgba(0,0,0,0.1);
+}
+.patients:hover { transform: translateY(-50%) scale(1.06); box-shadow: 0 5px 20px rgba(0,0,0,0.28); }
+.patients[data-unit="ZUFAHRT"] { display: none; }
+
+/* =========================================================
+   DELETE BUTTON
+========================================================= */
+.deleteVehicle, .deleteHP {
+  position: absolute; top: -9px; right: -9px;
+  background: var(--accent-red); color: #fff;
+  border-radius: 50%; width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 11px; font-weight: 700;
+  z-index: 10; box-shadow: var(--shadow);
+  transition: transform 0.15s;
+}
+.deleteVehicle:hover, .deleteHP:hover { transform: scale(1.2); }
+
+/* =========================================================
+   LAYOUT BEREICHE
+========================================================= */
+.topRow {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 9px; margin-top: 9px;
+}
+#pssContainer { margin-top: 9px; }
+#halteplaetze {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 9px; margin-top: 9px;
+}
+
+/* =========================================================
+   MITTLERE SPALTE
+========================================================= */
+.middle {
+  display: flex; flex-direction: column;
+  gap: 10px; padding: 12px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+.dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 2px;
+  background: var(--border);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  flex-shrink: 0;
+}
+
+.dashboard > div {
+  background: var(--bg-card);
+  padding: clamp(8px,0.7vw,13px) clamp(10px,0.9vw,16px);
+  line-height: clamp(1.5,1.7,1.9);
+  overflow-y: visible;
+  transition: background 0.25s;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(11px,0.78vw,14px);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dashboard b {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--accent-blue);
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+}
+
+/* Zahlen im Dashboard fett hervorheben */
+.dashboard strong {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.dash-sk1 { color: #c0392b; font-weight: 700; }
+.dash-sk2 { color: #c47000; font-weight: 700; }
+.dash-sk3 { color: #1a7a52; font-weight: 700; }
+.dash-sk4 { color: var(--text-dim); font-weight: 600; }
+
+/* =========================================================
+   ZUFAHRT
+========================================================= */
+.zufahrtContainer {
+  flex-shrink: 0;
+  min-height: clamp(80px, 10vh, 120px);
+  max-height: clamp(100px, 14vh, 150px);
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-left: 4px solid var(--accent-blue);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: var(--shadow);
+  transition: background 0.25s;
+}
+.zufahrtContainer::before {
+  content: 'ZUFAHRT';
+  position: absolute; top: 8px; left: 14px;
+  font-size: 11px; letter-spacing: 3px;
+  color: var(--accent-blue);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700; opacity: 0.65;
+}
+.zufahrt {
+  height: 100%; overflow: auto;
+  padding: 28px 10px 8px;
+  display: flex; flex-wrap: wrap;
+  gap: 8px; align-content: flex-start;
+}
+
+/* =========================================================
+   RECHTE SPALTE
+========================================================= */
+.right {
+  display: flex; flex-direction: column;
+  gap: 10px; padding: 12px;
+}
+
+/* MENÜ PANEL */
+.vehiclePanel {
+  background: var(--bg-panel);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+  transition: background 0.25s;
+}
+
+.vehiclePanel h3 {
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  border-bottom: 1.5px solid var(--border);
+  padding-bottom: 7px;
+  font-weight: 700;
+}
+
+.vehiclePanel > button {
+  display: block; width: 100%;
+  padding: 9px 10px;
+  font-size: 13px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 6px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border);
+  transition: all 0.15s;
+  text-transform: uppercase;
+  box-shadow: var(--shadow);
+}
+.vehiclePanel > button:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-bright);
+}
+
+.vehiclePanel > button[onclick="startEinsatz()"] {
+  color: var(--accent-green);
+  border-color: rgba(26,122,82,0.4);
+  background: rgba(26,122,82,0.07);
+}
+.vehiclePanel > button[onclick="startEinsatz()"]:hover {
+  background: rgba(26,122,82,0.15);
+  box-shadow: var(--glow-green);
+}
+
+.vehiclePanel > button[onclick="endEinsatz()"] {
+  color: var(--accent-red);
+  border-color: rgba(192,57,43,0.4);
+  background: rgba(192,57,43,0.07);
+}
+.vehiclePanel > button[onclick="endEinsatz()"]:hover {
+  background: rgba(192,57,43,0.15);
+  box-shadow: var(--glow-red);
+}
+
+.exportBtn {
+  color: var(--accent-blue) !important;
+  border-color: rgba(26,86,219,0.35) !important;
+  background: rgba(26,86,219,0.07) !important;
+}
+.exportBtn:hover {
+  background: rgba(26,86,219,0.14) !important;
+  box-shadow: var(--glow-blue) !important;
+}
+
+/* TIMER */
+#timer {
+  text-align: center;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--accent-green);
+  letter-spacing: 4px;
+  padding: 9px 0 3px;
+  border-top: 1.5px solid var(--border);
+  margin-top: 3px;
+}
+[data-theme="dark"] #timer { text-shadow: 0 0 14px rgba(46,196,182,0.5); }
+
+/* =========================================================
+   FUNK PANEL
+========================================================= */
+.funkPanel {
+  background: var(--bg-panel);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex; flex-direction: column;
+  flex: 1; min-height: 0;
+  box-shadow: var(--shadow);
+  transition: background 0.25s;
+}
+
+.funkPanel h3 {
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  border-bottom: 1.5px solid var(--border);
+  padding-bottom: 7px;
+  font-weight: 700;
+}
+
+.funkPanel input {
+  width: 100%; margin-bottom: 6px;
+  padding: 8px 11px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px; font-weight: 600;
+  letter-spacing: 1px;
+  transition: border-color 0.15s;
+}
+.funkPanel input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
+}
+.funkPanel input::placeholder { color: var(--text-dim); }
+
+.funkPanel > button {
+  padding: 9px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  background: rgba(26,86,219,0.08);
+  color: var(--accent-blue);
+  border: 1.5px solid rgba(26,86,219,0.35);
+  border-radius: 5px;
+  cursor: pointer; margin-bottom: 8px;
+  transition: all 0.15s;
+}
+.funkPanel > button:hover {
+  background: rgba(26,86,219,0.16);
+  box-shadow: var(--glow-blue);
+}
+
+/* FUNK LOG */
+#log {
+  flex: 1; overflow-y: auto;
+  min-height: 0;
+  font-size: 13px;
+  font-family: 'Share Tech Mono', monospace;
+  border-top: 1.5px solid var(--border);
+  padding-top: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  line-height: 1.9;
+}
+#log div {
+  color: var(--text-secondary);
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(128,128,128,0.07);
+}
+#log div:first-child { color: var(--accent-blue); font-weight: 600; }
+
+/* =========================================================
+   POPUP
+========================================================= */
+.popup {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(5px);
+  display: none; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+
+.popupContent {
+  background: var(--bg-panel);
+  border: 2px solid var(--border-bright);
+  border-radius: 10px;
+  padding: 22px; width: 350px;
+  box-shadow: 0 28px 60px rgba(0,0,0,0.35);
+  transition: background 0.25s;
+}
+
+.popupContent h3 {
+  font-size: 12px; letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  border-bottom: 1.5px solid var(--border);
+  padding-bottom: 9px;
+  font-weight: 700;
+}
+
+.popupContent input[type="number"] {
+  width: 100%; padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 26px; text-align: center;
+  margin-bottom: 12px;
+}
+.popupContent input[type="number"]:focus {
+  outline: none; border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
+}
+
+/* SICHTUNG */
+.sichtungRow {
+  display: flex; align-items: center;
+  gap: 6px; margin-bottom: 8px;
+}
+.sichtBtn {
+  flex: 1; padding: 8px 0;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px; font-weight: 700;
+  border-radius: 6px; cursor: pointer;
+  border: 2px solid transparent;
+  color: #fff; transition: all 0.15s;
+  letter-spacing: 1px;
+}
+.sichtBtn.sk1 { background: #c0392b; }
+.sichtBtn.sk2 { background: #c47000; }
+.sichtBtn.sk3 { background: #1a7a52; }
+.sichtBtn.sk4 { background: #555; color: #ddd; }
+.sichtBtn:hover { filter: brightness(1.12); }
+.sichtBtn.selected { outline: 3px solid white; outline-offset: 2px; }
+
+.sichtungLabel {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px; font-weight: 700;
+  color: var(--text-secondary);
+  min-width: 32px; text-align: center;
+}
+.sichtungLabel.SK1 { color: #c0392b; }
+.sichtungLabel.SK2 { color: #c47000; }
+.sichtungLabel.SK3 { color: #1a7a52; }
+.sichtungLabel.SK4 { color: var(--text-dim); }
+
+.sichtSetzenBtn {
+  display: block; width: 100%;
+  padding: 9px; margin-bottom: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  background: rgba(26,86,219,0.08);
+  color: var(--accent-blue);
+  border: 1.5px solid rgba(26,86,219,0.35);
+  border-radius: 6px; cursor: pointer;
+  transition: all 0.15s;
+}
+.sichtSetzenBtn:hover {
+  background: rgba(26,86,219,0.16);
+  box-shadow: var(--glow-blue);
+}
+
+/* POPUP BUTTONS */
+.popupButtons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.popupButtons button {
+  padding: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border);
+  border-radius: 5px; cursor: pointer;
+  transition: all 0.15s;
+}
+.popupButtons button:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+/* Fahrzeug-Popup farbig */
+#vehiclePopup .popupButtons button:nth-child(1) { background:#b03030; color:#fff; border-color:transparent; }
+#vehiclePopup .popupButtons button:nth-child(2) { background:#1a5276; color:#fff; border-color:transparent; }
+#vehiclePopup .popupButtons button:nth-child(3) { background:#6c3483; color:#fff; border-color:transparent; }
+#vehiclePopup .popupButtons button:nth-child(4) { background:#a04000; color:#fff; border-color:transparent; }
+#vehiclePopup .popupButtons button:nth-child(5) { background:#1a7a52; color:#fff; border-color:transparent; }
+
+#vehicleSelectBox select {
+  width: 100%; padding: 8px 10px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px; margin-top: 6px;
+}
+#vehicleSelectBox button { margin-top: 6px !important; width: 100%; }
+
+/* =========================================================
+   AUTOSAVE INDICATOR
+========================================================= */
+#autosaveIndicator {
+  position: fixed; right: 14px; bottom: 14px;
+  background: var(--bg-panel);
+  color: var(--accent-green);
+  border: 1.5px solid rgba(26,122,82,0.3);
+  padding: 5px 14px;
+  font-size: 11px; letter-spacing: 2px;
+  text-transform: uppercase; border-radius: 20px;
+  font-family: 'Share Tech Mono', monospace;
+  opacity: 0.85; z-index: 100;
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
+
+/* =========================================================
+   PRINT
+========================================================= */
+@media print {
+  body { background: white; color: black; overflow: auto; }
+  header, .right, #autosaveIndicator, .popup { display: none !important; }
+  .layout { display: block; }
+  .left, .middle { width: 100%; border: none; }
+  .bereich { break-inside: avoid; }
+  .vehicle { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* =========================================================
+   ALARMSTUFEN POPUP
+========================================================= */
+.alarmContent {
+  width: 520px !important;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.alarmHinweis {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  font-style: italic;
+}
+
+#alarmStufen {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  max-height: 52vh;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.alarmStufe {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-left: 4px solid var(--accent-red);
+  border-radius: 7px;
+  padding: 12px 14px;
+  position: relative;
+}
+
+.alarmStufe input.alarmTitel {
+  width: 100%;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--border);
+  color: var(--accent-red);
+  padding: 2px 0 6px;
+  margin-bottom: 8px;
+  outline: none;
+}
+.alarmStufe input.alarmTitel:focus {
+  border-bottom-color: var(--accent-red);
+}
+.alarmStufe input.alarmTitel::placeholder {
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.alarmStufe textarea {
+  width: 100%;
+  min-height: 70px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.7;
+  resize: vertical;
+  outline: none;
+}
+.alarmStufe textarea::placeholder {
+  color: var(--text-dim);
+}
+
+.alarmStufe .deleteAlarm {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: rgba(192,57,43,0.12);
+  color: var(--accent-red);
+  border: 1px solid rgba(192,57,43,0.3);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+}
+.alarmStufe .deleteAlarm:hover {
+  background: rgba(192,57,43,0.25);
+}
+
+.alarmActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.alarmActions button {
+  padding: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+.alarmActions button:first-child {
+  color: var(--accent-green);
+  border-color: rgba(26,122,82,0.4);
+  background: rgba(26,122,82,0.07);
+}
+.alarmActions button:first-child:hover {
+  background: rgba(26,122,82,0.15);
+  box-shadow: var(--glow-green);
+}
+.alarmActions button:last-child:hover {
+  border-color: var(--border-bright);
+}
+
+/* Alarmstufen-Button im Menü */
+.vehiclePanel > button[onclick="openAlarmstufen()"] {
+  color: var(--accent-red);
+  border-color: rgba(192,57,43,0.35);
+  background: rgba(192,57,43,0.07);
+}
+.vehiclePanel > button[onclick="openAlarmstufen()"]:hover {
+  background: rgba(192,57,43,0.15);
+  box-shadow: var(--glow-red);
+}
+
+/* =========================================================
+   ADRESSFELD IN BEREICHEN
+========================================================= */
+.adressfeld {
+  display: block;
+  width: calc(100% - 70px);
+  margin: 0 0 8px 0;
+  padding: 5px 9px;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px dashed var(--border-bright);
+  color: var(--text-secondary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  outline: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+.adressfeld:focus {
+  border-bottom-color: var(--accent-blue);
+  color: var(--text-primary);
+}
+.adressfeld::placeholder {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* =========================================================
+   BHP FELDER
+========================================================= */
+.bhpRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.bhp {
+  background: #ffffff;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: var(--shadow);
+  user-select: none;
+}
+
+[data-theme="dark"] .bhp {
+  background: #2a2f40;
+  border-color: var(--border-bright);
+}
+
+.bhp:hover {
+  border-color: var(--accent-green);
+  transform: translateY(-1px);
+}
+
+.bhp.aktiv {
+  background: #1a7a52;
+  border-color: #1a7a52;
+  box-shadow: 0 0 0 3px rgba(26,122,82,0.25), var(--shadow-md);
+}
+
+.bhpLabel {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+  transition: color 0.2s;
+}
+
+.bhp.aktiv .bhpLabel {
+  color: #ffffff;
+}
+
+.bhpSub {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 2px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.bhp.aktiv .bhpSub {
+  color: rgba(255,255,255,0.7);
+}
+
+/* =========================================================
+   ALARMSTUFEN TABS
+========================================================= */
+.alarmTabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.alarmTab {
+  padding: 9px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.alarmTab.active {
+  background: rgba(192,57,43,0.1);
+  color: var(--accent-red);
+  border-color: rgba(192,57,43,0.4);
+}
+
+/* Aktive Alarmstufe Auswahl */
+#alarmAuswahl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.alarmWahlBtn {
+  padding: 14px 16px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-align: left;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 2px solid var(--border);
+  border-left: 5px solid var(--accent-red);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.alarmWahlBtn:hover {
+  background: rgba(192,57,43,0.08);
+  border-color: var(--accent-red);
+  box-shadow: var(--glow-red);
+}
+
+.alarmWahlBtn.aktiv {
+  background: rgba(192,57,43,0.12);
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+  box-shadow: var(--glow-red);
+}
+
+.alarmWahlBtn .wahlTitel {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.alarmWahlBtn .wahlText {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* Dashboard Alarmstufe Anzeige */
+.dashAlarm {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(192,57,43,0.1);
+  border: 1.5px solid rgba(192,57,43,0.35);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-red);
+  letter-spacing: 0.5px;
+}
+
+/* =========================================================
+   DASHBOARD ? BUTTON & HEADER
+========================================================= */
+.dashHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+}
+
+.dashHeader b {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dashInfoBtn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-base);
+  border: 1.5px solid var(--border-bright);
+  color: var(--text-secondary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.dashInfoBtn:hover {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: white;
+  box-shadow: var(--glow-blue);
+}
+
+/* =========================================================
+   MENU GRID (kompakt, 2 Spalten)
+========================================================= */
+.menuGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-sm, 6px);
+  margin-bottom: var(--sp-sm, 6px);
+}
+.menuGrid > button {
+  display: block;
+  width: 100%;
+  padding: clamp(6px,0.5vw,9px) clamp(4px,0.4vw,8px);
+  font-size: clamp(10px,0.72vw,13px);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  letter-spacing: clamp(0.3px,0.05vw,0.9px);
+  border-radius: clamp(4px,0.35vw,7px);
+  cursor: pointer;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border);
+  transition: all 0.15s;
+  text-transform: uppercase;
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menuGrid > button:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-bright);
+}
+.menuGrid > .btnGreen {
+  color: var(--accent-green);
+  border-color: rgba(26,122,82,0.4);
+  background: rgba(26,122,82,0.07);
+  grid-column: 1;
+}
+.menuGrid > .btnGreen:hover { background: rgba(26,122,82,0.15); box-shadow: var(--glow-green); }
+.menuGrid > .btnRed {
+  color: var(--accent-red);
+  border-color: rgba(192,57,43,0.4);
+  background: rgba(192,57,43,0.07);
+}
+.menuGrid > .btnRed:hover { background: rgba(192,57,43,0.15); box-shadow: var(--glow-red); }
+.menuGrid > .exportBtn {
+  color: var(--accent-blue) !important;
+  border-color: rgba(26,86,219,0.35) !important;
+  background: rgba(26,86,219,0.07) !important;
+  grid-column: 1 / -1;
+}
+.menuGrid > .exportBtn:hover { background: rgba(26,86,219,0.14) !important; box-shadow: var(--glow-blue) !important; }
+
+/* =========================================================
+   FUEHRUNGSKRAFT KACHEL (gelb, fix)
+========================================================= */
+.fuehrungskraft {
+  width: clamp(62px,5vw,90px);
+  height: clamp(44px,3.8vh,64px);
+  border-radius: clamp(5px,0.4vw,8px);
+  background: #c47d00;
+  border: 2px solid rgba(255,255,255,0.25);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  cursor: grab;
+  position: relative;
+  transition: transform 0.18s, box-shadow 0.18s;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.22);
+  flex-shrink: 0;
+}
+.fuehrungskraft:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
+.fuehrungskraft:active { cursor: grabbing; transform: scale(0.97); }
+
+.fkTyp {
+  font-size: clamp(9px,0.65vw,12px);
+  font-weight: 700;
+  letter-spacing: clamp(0.5px,0.07vw,1.2px);
+  line-height: 1;
+}
+.fkName {
+  font-size: clamp(10px,0.75vw,13px);
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.9;
+}
+.deleteFk {
+  position: absolute;
+  top: clamp(-7px,-0.5vw,-6px);
+  right: clamp(-7px,-0.5vw,-6px);
+  background: #8a5700;
+  color: #fff;
+  border-radius: 50%;
+  width: clamp(15px,1.1vw,20px);
+  height: clamp(15px,1.1vw,20px);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: clamp(8px,0.55vw,11px);
+  font-weight: 700;
+  z-index: 10;
+  transition: transform 0.15s;
+}
+.deleteFk:hover { transform: scale(1.2); }
+
+/* =========================================================
+   EINSATZABSCHNITT
+========================================================= */
+.abschnitt {
+  border-left: 4px solid var(--accent-blue);
+  margin-top: 0;
+}
+#abschnitteContainer {
+  margin-top: clamp(6px,0.6vw,10px);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: clamp(6px,0.6vw,10px);
+  align-items: start;
+}
+.abschnittHeader {
+  display: block;
+  width: 100%;
+  margin-bottom: clamp(4px,0.4vw,8px);
+}
+.abschnittName {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(13px,1vw,17px);
+  font-weight: 700;
+  letter-spacing: clamp(0.5px,0.08vw,1.2px);
+  text-transform: uppercase;
+  color: var(--accent-blue);
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--border);
+  outline: none;
+  width: 100%;
+  padding: 2px 0 4px;
+  transition: border-color 0.15s;
+}
+.abschnittName:focus { border-bottom-color: var(--accent-blue); }
+
+/* FK-Zone im Abschnitt */
+.abschnittFkZone {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px,0.5vw,10px);
+  margin-bottom: clamp(4px,0.4vw,8px);
+  min-height: clamp(40px,4vh,60px);
+  padding: clamp(3px,0.3vw,5px) clamp(4px,0.35vw,7px);
+  background: rgba(196,125,0,0.07);
+  border: 1.5px dashed rgba(196,125,0,0.35);
+  border-radius: clamp(4px,0.35vw,7px);
+}
+.abschnittFkLabel {
+  font-size: clamp(9px,0.6vw,11px);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #c47d00;
+  opacity: 0.7;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.fkDrop {
+  flex: 1;
+  min-height: clamp(34px,3.5vh,50px);
+  border: none !important;
+  background: transparent !important;
+}
+
+/* =========================================================
+   BER CONTAINER (zwischen Zufahrt und BHP)
+========================================================= */
+#berContainer {
+  flex: none;
+}
+#berContainer .bereich {
+  margin-top: 0;
 }
 
 
 /* =========================================================
-   FIREBASE LIVE-SYNC
-   Schreibt bei jeder Änderung die Dashboard-Daten ins Firebase.
-   FIREBASE_CONFIG wird vom Benutzer einmalig eingetragen.
+   ALARM BANNER – über dem Dashboard
 ========================================================= */
-
-// Diese Zeile einmalig mit deinen Firebase-Daten befüllen (siehe Anleitung)
-const FIREBASE_URL = "https://seg-10-dashboard-default-rtdb.europe-west1.firebasedatabase.app"
-
-function syncToFirebase(){
-  if(!FIREBASE_URL) return // Kein Firebase konfiguriert
-
-  const rtw  = document.querySelectorAll(".vehicle.RTW").length
-  const ktw  = document.querySelectorAll(".vehicle.KTW").length
-  const nef  = document.querySelectorAll(".vehicle.NEF").length
-  const fisu = document.querySelectorAll(".vehicle.FISU").length
-  const nah  = document.querySelectorAll(".vehicle.NAH").length
-  const fk   = document.querySelectorAll(".fuehrungskraft").length
-
-  function pu(unit){ const el=document.querySelector('[data-unit="'+unit+'"]'); return el?(parseInt(el.innerText)||0):0 }
-
-  // Bereiche sammeln
-  const bereiche = []
-  document.querySelectorAll("#halteplaetze .bereich").forEach(hp=>{
-    bereiche.push({ name: hp.querySelector(".bheader")?.innerText||"HP", fzg: hp.querySelectorAll(".vehicle").length })
-  })
-  document.querySelectorAll("#abschnitteContainer .abschnitt").forEach(ab=>{
-    const name = ab.querySelector(".abschnittName")?.value || "Abschnitt"
-    bereiche.push({ name, fzg: ab.querySelectorAll(".vehicle, .fuehrungskraft").length })
-  })
-
-  const alarmstufeText = (aktiveAlarmstufe !== null && alarmstufen[aktiveAlarmstufe])
-    ? "ALARMSTUFE " + (aktiveAlarmstufe+1) + " – " + alarmstufen[aktiveAlarmstufe].titel
-    : ""
-
-  const data = {
-    ts: new Date().toISOString(),
-    alarm: alarmstufeText,
-    fahrzeuge: { rtw, ktw, nef, fisu, nah, gesamt: rtw+ktw+nef+fisu+nah, fk },
-    patienten: {
-      gesamt: totalPatients,
-      sk1: sichtungCounts.SK1, sk2: sichtungCounts.SK2,
-      sk3: sichtungCounts.SK3, sk4: sichtungCounts.SK4,
-      pss: pu("PSS"), vorsichtung: pu("VORSICHT"), ber: pu("BER"),
-      seg21: pu("21"), seg22: pu("22"), evak: pu("EVAK"), transport: pu("TRANSPORT")
-    },
-    bereiche,
-    einsatzAktiv,
-    timer: document.getElementById("timer")?.innerText || "00:00:00"
-  }
-
-  fetch(FIREBASE_URL + "/dashboard.json", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  }).catch(()=>{}) // Fehler still ignorieren – kein Popup
+#alarmBanner {
+  display: none;
+  background: var(--accent-red);
+  color: #fff;
+  text-align: center;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(14px, 1.2vw, 20px);
+  font-weight: 700;
+  letter-spacing: clamp(1px, 0.15vw, 3px);
+  text-transform: uppercase;
+  padding: clamp(7px, 0.7vh, 12px) clamp(10px, 1vw, 18px);
+  border-radius: var(--radius, 8px);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px rgba(192,57,43,0.3), var(--shadow-md);
+  animation: alarmPulse 2s ease-in-out infinite;
+}
+[data-theme="dark"] #alarmBanner {
+  background: var(--accent-red);
+  box-shadow: 0 0 20px rgba(230,57,70,0.5);
+}
+@keyframes alarmPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.82; }
 }
 
-/* SAVE */
-function saveState(){
-  if(!einsatzAktiv||!einsatzDateiHandle) return
-  let data={ timestamp:new Date().toISOString(), log:eventLog, theme:document.documentElement.getAttribute("data-theme")||"light", sichtungCounts }
-  saveAlarmstufen(); data.alarmstufen=alarmstufen; data.html=document.body.innerHTML
-  writeFile(data)
-}
-async function writeFile(data){
-  try{
-    const writable=await einsatzDateiHandle.createWritable()
-    await writable.write(JSON.stringify(data,null,2))
-    await writable.close()
-    letzterAutosave=new Date(); updateAutosaveIndicator()
-  }catch(err){ console.error("Autosave Fehler",err) }
-}
-function updateAutosaveIndicator(){
-  const el=document.getElementById("autosaveIndicator")
-  if(!el) return
-  el.textContent="Autosave "+(letzterAutosave?letzterAutosave.toLocaleTimeString():"--:--")
+/* Dashboard: kein Scroll mehr, auto-Höhe */
+.dashboard > div {
+  overflow-y: visible !important;
 }
 
-/* EINSATZ */
-async function startEinsatz(){
-  try{
-    const fh=await window.showSaveFilePicker({ suggestedName:"einsatz_"+new Date().toISOString().slice(0,16).replace("T","_").replace(":","-")+".json", types:[{description:"JSON",accept:{"application/json":[".json"]}}] })
-    einsatzDateiHandle=fh; einsatzAktiv=true
-    logEvent("Einsatz gestartet"); startTimer()
-    autosaveTimer=setInterval(()=>saveState(),30000)
-  }catch(err){ console.log("Speichern abgebrochen") }
+/* =========================================================
+   ALARM BANNER (über Dashboard)
+========================================================= */
+#alarmBanner {
+  display: none;
+  background: rgba(192,57,43,0.15);
+  border: 2px solid var(--accent-red);
+  border-radius: var(--radius, 8px);
+  padding: clamp(6px,0.6vh,10px) clamp(12px,1vw,18px);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(13px, 1vw, 17px);
+  font-weight: 700;
+  letter-spacing: clamp(1px, 0.15vw, 2px);
+  text-transform: uppercase;
+  color: var(--accent-red);
+  text-align: center;
+  box-shadow: var(--glow-red);
+  flex-shrink: 0;
+  animation: alarmPulse 2s ease-in-out infinite;
 }
-function endEinsatz(){
-  if(!confirm("Einsatz wirklich beenden?")) return
-  logEvent("Einsatz beendet"); saveState(); clearInterval(autosaveTimer); stopTimer(); einsatzAktiv=false
+[data-theme="dark"] #alarmBanner {
+  background: rgba(230,57,70,0.18);
 }
-function startTimer(){
-  if(timerInterval) clearInterval(timerInterval)
-  einsatzStartZeit=Date.now()
-  timerInterval=setInterval(()=>{
-    let diff=Date.now()-einsatzStartZeit
-    let h=Math.floor(diff/3600000),m=Math.floor(diff/60000)%60,s=Math.floor(diff/1000)%60
-    const el=document.getElementById("timer")
-    if(el) el.innerText=String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")
-  },1000)
-}
-function stopTimer(){ clearInterval(timerInterval); timerInterval=null }
-
-/* RELOAD SCHUTZ */
-function initReloadProtection(){
-  window.addEventListener("keydown",function(e){
-    const isF5=e.key==="F5", isCtrlR=(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="r"
-    if(isF5||isCtrlR){
-      e.preventDefault(); e.stopPropagation()
-      if(confirm("Seite wirklich neu laden?\nAlle nicht gespeicherten Daten gehen verloren!")){
-        window.removeEventListener("keydown",arguments.callee); window.location.reload()
-      }
-    }
-  },true)
-  window.addEventListener("beforeunload",function(e){ e.preventDefault(); e.returnValue="Seite verlassen?" })
-}
-
-function logEvent(text){ eventLog.push(new Date().toLocaleTimeString()+" | "+text) }
-
-/* THEME */
-function toggleTheme(){
-  const html=document.documentElement
-  const isLight=html.getAttribute("data-theme")==="light"
-  html.setAttribute("data-theme",isLight?"dark":"light")
-  const btn=document.getElementById("themeBtn")
-  if(btn) btn.textContent=isLight?"\u2600":"\uD83C\uDF19"
-  saveState()
-}
-
-/* SICHTUNG */
-function setSichtung(cat){
-  currentSichtung=(currentSichtung===cat)?null:cat
-  document.querySelectorAll(".sichtBtn").forEach(b=>b.classList.remove("selected"))
-  const label=document.getElementById("sichtungLabel")
-  if(currentSichtung){
-    const btn=document.querySelector(".sichtBtn."+cat.toLowerCase())
-    if(btn) btn.classList.add("selected")
-    label.textContent=cat; label.className="sichtungLabel "+cat
-  }else{ label.textContent="\u2013"; label.className="sichtungLabel" }
-}
-function resetSichtungUI(){
-  currentSichtung=null
-  document.querySelectorAll(".sichtBtn").forEach(b=>b.classList.remove("selected"))
-  const label=document.getElementById("sichtungLabel")
-  if(label){ label.textContent="\u2013"; label.className="sichtungLabel" }
-}
-function sichtungSetzen(){
-  if(!currentSichtung){ alert("Bitte zuerst eine Sichtungskategorie auswaehlen."); return }
-  if(!currentPatientBox){ closePopup(); return }
-  const inputAmount=parseInt(document.getElementById("patientInput").value)
-  const bestand=parseInt(currentPatientBox.innerText)||0
-  const zuweisung=(!isNaN(inputAmount)&&inputAmount>0)?Math.min(inputAmount,bestand):bestand
-  if(zuweisung<=0){ alert("Keine Patienten vorhanden."); return }
-  sichtungCounts[currentSichtung]=(sichtungCounts[currentSichtung]||0)+zuweisung
-  logEvent("Sichtung zugewiesen: "+zuweisung+" Pat. -> "+currentSichtung)
-  updatePatients(); closePopup(); saveState()
-}
-
-/* ALARMSTUFEN – fix 5 Stufen, vorbelegt aus GSM-DFB */
-if(alarmstufen.length < 5){
-  alarmstufen = [
-    {
-      titel: "A1 – Kleinlage",
-      text: "RESSOURCEN:\n\u2022 SEG-3 (ersatzweise SEG-1)\n\u2022 SEG-10\n\u2022 SEG-21 oder SEG-22\n\u2022 2\u00d7 RTW\n\nFUNKKANAL: BRW-KAT-1\n\nEINSATZTAKTIK: Ein RTW als Bergebereitschaft/PSS, zweiter RTW im SEG-Bus. Geh\u00e4hige Patienten prim\u00e4r im SEG-Bus. SEG-10 als F\u00fchrungsunterst\u00fctzung.\n\nAUSRUFUNG gem\u00e4\u00df AO oder durch EL-RD auch auf Anfahrt."
-    },
-    {
-      titel: "A2 – Mittellage",
-      text: "RESSOURCEN:\n\u2022 SEG-1 (ersatzweise SEG-3), SEG-10\n\u2022 SEG-21 oder SEG-22, SEG-EVAK\n\u2022 MLS-Wien, ZTR-OA, SAN-Team HIO\n\u2022 2\u00d7 RTW, 2\u00d7 N-KTW, 1\u00d7 NEF\n\nFUNKKANAL: BRW-KAT-1\n\nMASSNAHMEN:\n\u2713 Gro\u00dfschadensprotokoll im Berufsrettungsportal\n\u2713 Vorverst\u00e4ndigung WIGEV Journaldienst\n\u2713 Alarmierung SAN-Team HIO\n\nEINSATZABSCHNITTE:\n1. Intervention (ZGKDT)\n2. Behandlung (erfahrene F\u00fchrungskraft)\n3. Transport (MLS Wien / QM Leitstelle)"
-    },
-    {
-      titel: "A3 – Gro\u00dflage / MANV",
-      text: "RESSOURCEN: SEG-1, SEG-3, SEG-10, SEG-21+22, SEG-EVAK, SEG-11+12, MLS-Wien, ZTR-OA, mind. 1\u00d7 FISU + RTW/N-KTW/NEF je MANV\n\nBHP-KAPAZIT\u00c4TEN:\n\u2022 SEG-21/22: je 25 Pl\u00e4tze (15\u00d7 SK3, 10\u00d7 SK1/SK2)\n\u2022 SEG-11/12: je 10 Pl\u00e4tze (SK1/SK2)\n\nMANV-STICHWORT (SK1+SK2):\nMANV-10: 5 RTW/NKTW, 2 NEF\nMANV-20: 9 RTW/NKTW, 3 NEF\nMANV-30: 13 RTW/NKTW, 4 NEF\nMANV-40: 17 RTW/NKTW, 5 NEF\nMANV-50: 21 RTW/NKTW, 6 NEF\nMANV-60: 25 RTW/NKTW, 7 NEF\n\nMASSNAHMEN: Gro\u00dfschadensprotokoll, Bettenabsprache SOP LS-33, Info Kommando MA70+MD-OS, Anforderung Transportressourcen SAN-Team HIO"
-    },
-    {
-      titel: "A4 – \u00dcbergro\u00dflage",
-      text: "AKTIVIERUNG wenn MA70-Behandlungskapazit\u00e4ten nicht ausreichen.\n\nZUS\u00c4TZLICHE BHP:\n\u2022 BF Wien AB Erg\u00e4nzungsmaterial (2\u00d7 MT-40, Wache Leopoldstadt)\n\u2022 Bis zu 5\u00d7 BHP 25 privater Rettungsorg. (je in 30-Min-Intervallen)\n\nMANV-STICHWORT A4:\nMANV-70: 29 RTW/NKTW, 8 NEF\nMANV-80: 33 RTW/NKTW, 9 NEF\nMANV-90: 37 RTW/NKTW, 10 NEF\nMANV-100: 41 RTW/NKTW, 11 NEF\nMANV-110: 45 RTW/NKTW, 12 NEF\n\nMASSNAHMEN: KTD auf Minimum, Ressourcen anderer Bundesl\u00e4nder, Nachbesetzung alle MA70-Ressourcen, Einberufung Einsatzstab MA70"
-    },
-    {
-      titel: "A5 – Sonderlage / Dauerlage",
-      text: "AKTIVIERUNG: Nur durch RDL oder Stellvertreter.\nF\u00fcr Eins\u00e4tze > 24h oder Sonderlagen mit erweiterter F\u00fchrungsstruktur.\n\nBESONDERHEITEN:\n\u2022 Einsatzf\u00fchrung aus dem Einsatzstab MA70 (nicht von vorne)\n\u2022 Gesamteinsatzleitung: RDL oder Beauftragter\n\u2022 Voller Zugriff auf alle Hilfseinheiten privater Org.\n\u2022 Ma\u00dfnahmen individuell zugeschnitten + dokumentieren\n\nKOMMUNIKATION:\nBRW-KAT-1 (bzw. KAT-2 bei Paralleleinsatz)\nSonderlagen SEG-Disponent: BRW-KAT-3"
-    }
-  ]
-}
-
-function openAlarmstufen(){
-  saveAlarmstufen()
-  renderAlarmstufen()
-  switchAlarmTab("info")
-  document.getElementById("alarmPopup").style.display="flex"
-}
-function closeAlarmPopup(){
-  saveAlarmstufen()
-  document.getElementById("alarmPopup").style.display="none"
-  saveState()
-}
-
-function saveAlarmstufen(){
-  const stufen=document.querySelectorAll(".alarmStufe")
-  stufen.forEach((s,i)=>{
-    if(alarmstufen[i]){
-      alarmstufen[i].titel = s.querySelector(".alarmTitel").value
-      alarmstufen[i].text  = s.querySelector("textarea").value
-    }
-  })
-}
-
-function renderAlarmstufen(){
-  const c=document.getElementById("alarmStufen"); if(!c) return
-  c.innerHTML=""
-  alarmstufen.forEach((stufe,i)=>{
-    const div=document.createElement("div")
-    div.className="alarmStufe"
-    div.innerHTML=`
-      <div style="font-size:var(--fs-xs,11px);font-weight:700;letter-spacing:2px;color:var(--accent-red);margin-bottom:5px;text-transform:uppercase">Stufe ${i+1}</div>
-      <input class="alarmTitel" placeholder="Bezeichnung (z.B. Kleinlage)" value="${stufe.titel.replace(/"/g,'&quot;')}">
-      <textarea placeholder="Kräfte und Maßnahmen…&#10;z.B. SEG-10, 3× RTW, 1× NEF">${stufe.text}</textarea>
-    `
-    c.appendChild(div)
-  })
-}
-
-function switchAlarmTab(tab){
-  document.querySelectorAll(".alarmTab").forEach(b=>b.classList.remove("active"))
-  document.getElementById("alarmTabInfo").style.display  = tab==="info"  ? "" : "none"
-  document.getElementById("alarmTabAktiv").style.display = tab==="aktiv" ? "" : "none"
-  if(tab==="info"){
-    document.querySelectorAll(".alarmTab")[0].classList.add("active")
-  }else{
-    saveAlarmstufen()
-    document.querySelectorAll(".alarmTab")[1].classList.add("active")
-    renderAlarmAuswahl()
-  }
-}
-
-function renderAlarmAuswahl(){
-  const c=document.getElementById("alarmAuswahl"); if(!c) return
-  c.innerHTML=""
-  alarmstufen.forEach((stufe,i)=>{
-    const btn=document.createElement("button")
-    btn.className="alarmWahlBtn"+(aktiveAlarmstufe===i?" aktiv":"")
-    btn.innerHTML=`<div class="wahlTitel">Stufe ${i+1} – ${stufe.titel||"Alarmstufe "+(i+1)}</div>${stufe.text?`<div class="wahlText">${stufe.text}</div>`:""}`
-    btn.onclick=()=>{
-      aktiveAlarmstufe=(aktiveAlarmstufe===i)?null:i
-      renderAlarmAuswahl()
-      updateDashboard()
-      logEvent(aktiveAlarmstufe!==null
-        ?"Alarmstufe aktiviert: Stufe "+(i+1)+" – "+(stufe.titel||"")
-        :"Alarmstufe aufgehoben")
-      saveState()
-    }
-    c.appendChild(btn)
-  })
-}
-
-function alarmStufeDeaktivieren(){
-  aktiveAlarmstufe=null
-  renderAlarmAuswahl()
-  updateDashboard()
-  logEvent("Alarmstufe aufgehoben")
-  saveState()
-}
-
-/* FAHRZEUGHISTORIE */
-function openFahrzeugHistorie(){
-  const liste=document.getElementById("fahrzeugHistorieListe"); if(!liste) return
-  const fahrzeuge=[]
-  document.querySelectorAll(".vehicle").forEach(v=>{
-    const id=v.dataset.id,type=v.children[1]?.innerText||"",name=v.children[2]?.innerText||"",aktiv=v.classList.contains("active")
-    const bereichHeader=v.closest(".bereich")?.querySelector(".bheader")?.innerText||(v.closest("#zufahrt")?"Zufahrt":"–")
-    const aufTransport=v.closest(".bereich.blue")!==null
-    const log=fahrzeugLog[id]||{}
-    fahrzeuge.push({id,type,name,aktiv,bereichHeader,aufTransport,erstellt:log.zeit||"–",eingetroffen:log.eingetroffen||null})
-  })
-  if(fahrzeuge.length===0){ liste.innerHTML='<div style="color:var(--text-dim);font-size:13px;text-align:center;padding:16px 0;">Noch keine Fahrzeuge angelegt.</div>'; document.getElementById("fahrzeugHistoriePopup").style.display="flex"; return }
-  let html='<div style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;padding-right:4px;">'
-  fahrzeuge.forEach(f=>{
-    const farbe=f.aktiv?"var(--veh-active)":(f.aufTransport?"#888":"var(--veh-inactive)")
-    const statusText=f.aktiv?"\u2705 Vor Ort \u2013 "+f.bereichHeader:(f.aufTransport?"\uD83D\uDE91 Transport \u2013 "+f.bereichHeader:"\u23F3 Noch nicht eingetroffen")
-    html+='<div style="background:var(--bg-card);border:1.5px solid var(--border);border-left:4px solid '+farbe+';border-radius:7px;padding:10px 13px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-family:\'Rajdhani\',sans-serif;font-size:15px;font-weight:700;color:var(--text-primary);">'+f.type+' \u00b7 '+f.name+'</span><span style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--text-dim);">Angelegt: '+f.erstellt+'</span></div><div style="font-size:13px;font-weight:600;color:'+farbe+';margin-top:4px;">'+statusText+'</div>'+(f.eingetroffen?'<div style="font-size:12px;color:var(--text-dim);font-family:\'Share Tech Mono\',monospace;margin-top:2px;">Eingetroffen: '+f.eingetroffen+'</div>':'')+'</div>'
-  })
-  html+="</div>"; liste.innerHTML=html
-  document.getElementById("fahrzeugHistoriePopup").style.display="flex"
-}
-
-/* EXPORT */
-function exportEinsatz(){
-  const now=new Date(),zeitstempel=now.toLocaleString("de-AT")
-  let fahrzeugeRows=""
-  document.querySelectorAll(".vehicle").forEach(v=>{
-    const typ=v.children[1]?.innerText||"",name=v.children[2]?.innerText||"",aktiv=v.classList.contains("active")?"Eingetroffen":"Zugewiesen"
-    const pats=v.querySelector(".patBadge")?.innerText||"0"
-    const area=v.closest(".bereich")?.querySelector(".bheader")?.innerText||(v.closest("#zufahrt")?"Zufahrt":"–")
-    fahrzeugeRows+="<tr><td>"+typ+"</td><td>"+name+"</td><td>"+aktiv+"</td><td>"+area+"</td><td>"+pats+"</td></tr>"
-  })
-  let funkRows=""; document.querySelectorAll("#log div").forEach(d=>{ funkRows+="<tr><td>"+d.innerText+"</td></tr>" })
-  let logRows=eventLog.map(e=>"<tr><td>"+e+"</td></tr>").join("")
-  const html='<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Einsatzbericht SEG-10</title><style>body{font-family:Arial,sans-serif;font-size:13px;margin:30px;color:#111}h1{font-size:20px;border-bottom:3px solid #c0392b;padding-bottom:8px}h2{font-size:14px;margin-top:24px;color:#c0392b;text-transform:uppercase;letter-spacing:1px}.meta{color:#555;font-size:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#c0392b;color:white;padding:6px 10px;text-align:left;font-size:12px}td{padding:5px 10px;border-bottom:1px solid #ddd}tr:nth-child(even) td{background:#f9f9f9}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}.sbox{border:1px solid #ddd;border-radius:6px;padding:10px;text-align:center}.sbox .num{font-size:28px;font-weight:bold}.sbox .lbl{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px}.t1 .num{color:#c0392b}.t2 .num{color:#d68910}.t3 .num{color:#1e8449}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="float:right;padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer">Drucken</button><h1>Einsatzbericht SEG-10</h1><div class="meta">Berufsrettung Wien | '+zeitstempel+' | Patienten: <strong>'+totalPatients+'</strong></div><div class="summary"><div class="sbox"><div class="num">'+totalPatients+'</div><div class="lbl">Gesamt</div></div><div class="sbox t1"><div class="num">'+sichtungCounts.SK1+'</div><div class="lbl">SK1 Sofort</div></div><div class="sbox t2"><div class="num">'+sichtungCounts.SK2+'</div><div class="lbl">SK2 Dringend</div></div><div class="sbox t3"><div class="num">'+sichtungCounts.SK3+'</div><div class="lbl">SK3 Nicht dringend</div></div></div><h2>Fahrzeuge</h2><table><tr><th>Typ</th><th>Kennung</th><th>Status</th><th>Bereich</th><th>Patienten</th></tr>'+(fahrzeugeRows||"<tr><td colspan='5'>Keine Fahrzeuge</td></tr>")+'</table><h2>Funkprotokoll</h2><table><tr><th>Eintrag</th></tr>'+(funkRows||"<tr><td>Keine Funksprueche</td></tr>")+'</table><h2>Ereignisprotokoll</h2><table><tr><th>Eintrag</th></tr>'+(logRows||"<tr><td>Kein Log</td></tr>")+'</table></body></html>'
-  const blob=new Blob([html],{type:"text/html;charset=utf-8"})
-  const url=URL.createObjectURL(blob)
-  const win=window.open(url,"_blank")
-  if(win) win.focus()
-  logEvent("Einsatz exportiert")
-}
-
-/* SHORTCUTS
-   Ctrl+Shift+1-5: Fahrzeuge (Ziffern = keine Browser-Konflikte)
-   Ctrl+Shift+6: Einsatz starten (Ziffer = kein AltGr-Problem)
-   Ctrl+Alt+Buchstabe: restliche Aktionen (e.code = layout-unabhaengig)
-   Fahrzeug-Menue offen: Tasten 1-5
-*/
-const SHORTCUTS=[
-  // Fahrzeuge: Ctrl+Shift+Ziffer (konfliktfrei)
-  {keys:"Ctrl+Shift+1", code:"Digit1", label:"RTW erstellen",             action:()=>createVehicle("RTW"),  cs:true},
-  {keys:"Ctrl+Shift+2", code:"Digit2", label:"KTW erstellen",             action:()=>createVehicle("KTW"),  cs:true},
-  {keys:"Ctrl+Shift+3", code:"Digit3", label:"NEF erstellen",             action:()=>createVehicle("NEF"),  cs:true},
-  {keys:"Ctrl+Shift+4", code:"Digit4", label:"FISU erstellen",            action:()=>createVehicle("FISU"), cs:true},
-  {keys:"Ctrl+Shift+5", code:"Digit5", label:"NAH erstellen",             action:()=>createVehicle("NAH"),  cs:true},
-  // Einsatz starten: Ctrl+Shift+6 (Ziffer = kein AltGr)
-  {keys:"Ctrl+Shift+6", code:"Digit6", label:"Einsatz starten",           action:()=>startEinsatz(),        cs:true},
-  // Restliche: Ctrl+Alt+Buchstabe (e.code layout-unabhaengig)
-  {keys:"Ctrl+Alt+E",   code:"KeyE",   label:"Einsatz beenden",           action:()=>endEinsatz()},
-  {keys:"Ctrl+Alt+F",   code:"KeyF",   label:"Vollbild an/aus",           action:()=>toggleFullscreen()},
-  {keys:"Ctrl+Alt+D",   code:"KeyD",   label:"Dark Mode an/aus",          action:()=>toggleTheme()},
-  {keys:"Ctrl+Alt+V",   code:"KeyV",   label:"Fahrzeug-Menue oeffnen",    action:()=>openVehicleMenu()},
-  {keys:"Ctrl+Alt+P",   code:"KeyP",   label:"Patienten-Menue oeffnen",   action:()=>openPatientMenu()},
-  {keys:"Ctrl+Alt+A",   code:"KeyA",   label:"Alarmstufen oeffnen",       action:()=>openAlarmstufen()},
-  {keys:"Ctrl+Alt+H",   code:"KeyH",   label:"Halteplatz erstellen",      action:()=>createHalteplatz()},
-  {keys:"Ctrl+Alt+W",   code:"KeyW",   label:"PSS erstellen",             action:()=>createPSS()},
-  {keys:"Ctrl+Alt+O",   code:"KeyO",   label:"Vorsichtung erstellen",     action:()=>createVorsichtung()},
-  {keys:"Ctrl+Alt+B",   code:"KeyB",   label:"BER erstellen",             action:()=>createBER()},
-  {keys:"Ctrl+Alt+X",   code:"KeyX",   label:"Abschnitt erstellen",       action:()=>createAbschnitt()},
-  {keys:"Ctrl+Alt+G",   code:"KeyG",   label:"Funk - Eingabe fokussieren",action:()=>document.getElementById("funkVon")?.focus(), allowInInput:true},
-  {keys:"Ctrl+Alt+K",   code:"KeyK",   label:"Shortcut-Uebersicht",       action:()=>{ const ov=document.getElementById("shortcutOverlay"); if(ov) ov.style.display="flex" }},
-]
-
-function initShortcuts(){
-  window.addEventListener("keydown", function(e){
-
-    if(e.key==="Escape"){
-      closePopup()
-      document.getElementById("alarmPopup").style.display="none"
-      const ov=document.getElementById("shortcutOverlay"); if(ov) ov.style.display="none"
-      return
-    }
-
-    const isInput = ["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)
-
-    // Fahrzeug-Popup offen: Tasten 1-5
-    if(vehicleHotkeysActive && !e.ctrlKey && !e.altKey && !e.shiftKey){
-      if(e.code==="Digit1"){ e.preventDefault(); createVehicle("RTW"); return }
-      if(e.code==="Digit2"){ e.preventDefault(); createVehicle("KTW"); return }
-      if(e.code==="Digit3"){ e.preventDefault(); createVehicle("NEF"); return }
-      if(e.code==="Digit4"){ e.preventDefault(); createVehicle("FISU"); return }
-      if(e.code==="Digit5"){ e.preventDefault(); createVehicle("NAH"); return }
-    }
-
-    // Ctrl+Shift+Ziffer (Fahrzeuge + Einsatz starten)
-    if(e.ctrlKey && e.shiftKey && !e.altKey){
-      const sc = SHORTCUTS.find(s => s.cs && s.code === e.code)
-      if(sc){
-        e.preventDefault(); e.stopImmediatePropagation()
-        if(!isInput) sc.action()
-        return
-      }
-    }
-
-    // Ctrl+Alt+Buchstabe – e.code ist layout-unabhaengig
-    if(e.ctrlKey && e.altKey && !e.shiftKey){
-      const sc = SHORTCUTS.find(s => !s.cs && s.code === e.code)
-      if(sc){
-        if(isInput && !sc.allowInInput) return
-        e.preventDefault(); e.stopImmediatePropagation(); sc.action(); return
-      }
-    }
-
-  }, true)
-}
-
-function renderShortcutList(){
-  const el=document.getElementById("shortcutList"); if(!el) return
-  el.innerHTML=SHORTCUTS.map(sc=>`<div style="display:flex;justify-content:space-between;gap:20px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--accent-blue);font-family:'Share Tech Mono',monospace;font-size:11px">${sc.keys}</span><span>${sc.label}</span></div>`).join("")
+@keyframes alarmPulse {
+  0%, 100% { box-shadow: var(--glow-red); }
+  50% { box-shadow: 0 0 20px rgba(192,57,43,0.5); }
 }
