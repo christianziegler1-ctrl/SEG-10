@@ -235,6 +235,11 @@
     <div id="bereiche-list"></div>
   </div>
 
+  <div class="card" id="seg-card" style="display:none;margin-bottom:10px">
+    <div class="card-title">&#9889; SEG Einheiten vor Ort</div>
+    <div id="seg-list" style="display:flex;flex-wrap:wrap;gap:8px;padding-top:6px"></div>
+  </div>
+
 
 </div>
 
@@ -302,6 +307,19 @@ function updateUI(data){
     ).join("")
   } else {
     card.style.display = "none"
+  }
+
+  // SEG Einheiten vor Ort
+  const segCard = document.getElementById("seg-card")
+  const segList = document.getElementById("seg-list")
+  const segVorOrt = data.segVorOrt || []
+  if(segVorOrt.length > 0){
+    segCard.style.display = "block"
+    segList.innerHTML = segVorOrt.map(s =>
+      '<div style="background:rgba(46,196,182,0.15);border:1.5px solid #2ec4b6;border-radius:6px;padding:5px 12px;font-weight:700;letter-spacing:1px;color:#2ec4b6;font-size:clamp(12px,2.2vw,15px)">&#10003; ' + s + '</div>'
+    ).join("")
+  } else {
+    segCard.style.display = "none"
   }
 
   // Zeitstempel
