@@ -20,11 +20,11 @@ header { background:var(--panel); border-bottom:3px solid var(--rot); padding:10
 .hl p  { font-size:10px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; }
 #hinfo { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--blue); text-align:right; }
 
-.screen { display:none; padding:16px; max-width:540px; margin:0 auto; padding-bottom:100px; }
-.screen.active { display:block; }
+.screen { display:none; }
+.screen.active { display:flex; flex-direction:column; }
 
 /* START */
-#screen-einsatz { display:flex; flex-direction:column; align-items:center; gap:12px; padding-top:20px; min-height:80vh; }
+#screen-einsatz { padding:16px; max-width:540px; margin:0 auto; width:100%; align-items:center; gap:12px; padding-top:20px; min-height:calc(100vh - 57px); overflow-y:auto; }
 #screen-einsatz h2 { font-size:clamp(18px,5vw,28px); letter-spacing:3px; text-transform:uppercase; }
 #screen-einsatz > p { color:var(--dim); font-size:13px; text-align:center; max-width:340px; line-height:1.5; }
 
@@ -59,12 +59,16 @@ header { background:var(--panel); border-bottom:3px solid var(--rot); padding:10
 .ntab.active { color:#e74c3c; border-bottom-color:#e74c3c; }
 
 /* ABSCHNITT */
-#screen-abschnitt { display:flex; flex-direction:column; align-items:center; gap:12px; padding-top:16px; }
+#screen-abschnitt { padding:16px; max-width:540px; margin:0 auto; width:100%; align-items:center; gap:12px; padding-top:16px; min-height:calc(100vh - 92px); overflow-y:auto; }
 .a-item { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:var(--card); border:1.5px solid var(--border); border-left:4px solid var(--blue); border-radius:8px; cursor:pointer; margin-bottom:6px; transition:all 0.15s; }
 .a-item:hover { border-color:var(--blue); }
 .a-item:active { transform:scale(0.98); }
 .ai-n { font-size:15px; font-weight:700; letter-spacing:1px; }
 .ai-c { font-family:'Share Tech Mono',monospace; font-size:13px; }
+
+/* ALGO + ZAEHLER */
+#screen-algo   { padding:16px; max-width:540px; margin:0 auto; width:100%; padding-bottom:100px; }
+#screen-zaehler{ padding:16px; max-width:540px; margin:0 auto; width:100%; padding-bottom:100px; }
 
 /* ALGO */
 .step-card { background:var(--card); border:2px solid var(--border); border-radius:12px; padding:20px; margin-bottom:12px; animation:fi 0.2s ease; }
