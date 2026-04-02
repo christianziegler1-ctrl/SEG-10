@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>mASAV Vorsichtung – Berufsrettung Wien</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --rot:    #c0392b;
+  --gelb:   #c47d00;
+  --gruen:  #1a7a52;
+  --schwarz:#2c2c2c;
+  --bg:     #0d0f14;
+  --panel:  #141720;
+  --card:   #1a1f2e;
+  --border: #2a3048;
+  --text:   #e8ecf4;
+  --dim:    #4a5268;
+}
+
+body {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===== HEADER ===== */
+header {
+  background: var(--panel);
+  border-bottom: 3px solid var(--rot);
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-left h1 {
+  font-size: clamp(16px, 4vw, 22px);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.header-left p {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+.header-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#abschnitt-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  background: rgba(72,149,239,0.15);
+  border: 1px solid rgba(72,149,239,0.4);
+  color: #4895ef;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 1px;
+}
+
+.btn-icon {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-icon:hover { border-color: #4895ef; color: #4895ef; }
+
+/* ===== SCREENS ===== */
+.screen { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }
+.screen.active { display: block; }
+
+/* ===== START SCREEN ===== */
+#screen-start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  gap: 20px;
+  text-align: center;
+}
+
+#screen-start h2 {
+  font-size: clamp(20px, 5vw, 32px);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+#screen-start p {
+  color: var(--dim);
+  font-size: 14px;
+  max-width: 360px;
+  line-height: 1.6;
+}
+
+#abschnitt-input {
+  width: 100%;
+  max-width: 360px;
+  padding: 14px 16px;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 1px;
+  outline: none;
+}
+#abschnitt-input:focus { border-color: #4895ef; }
+#abschnitt-input::placeholder { color: var(--dim); font-weight: 600; }
+
+.btn-start {
+  width: 100%;
+  max-width: 360px;
+  padding: 18px;
+  background: var(--rot);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 20px rgba(192,57,43,0.35);
+}
+.btn-start:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(192,57,43,0.5); }
+.btn-start:active { transform: scale(0.98); }
+
+/* ===== ALGORITHMUS SCREEN ===== */
+#screen-algo { padding-bottom: 120px; }
+
+.step-card {
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 12px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.step-num {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+
+.step-question {
+  font-size: clamp(18px, 5vw, 26px);
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+.step-hint {
+  font-size: 13px;
+  color: var(--dim);
+  margin-bottom: 14px;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.step-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.step-btn {
+  padding: 16px 10px;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.step-btn:active { transform: scale(0.96); }
+
+.btn-ja  { background: #1a7a52; color: #fff; box-shadow: 0 3px 12px rgba(26,122,82,0.3); }
+.btn-nein{ background: #2a3048; color: var(--text); border: 1.5px solid var(--border); }
+.btn-ja:hover   { background: #22a06b; }
+.btn-nein:hover { background: #3a4060; }
+
+/* ===== ERGEBNIS ===== */
+.result-card {
+  border-radius: 12px;
+  padding: 24px 20px;
+  text-align: center;
+  margin-bottom: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+.result-card.rot    { background: rgba(192,57,43,0.15); border: 3px solid var(--rot); }
+.result-card.gelb   { background: rgba(196,125,0,0.15);  border: 3px solid var(--gelb); }
+.result-card.gruen  { background: rgba(26,122,82,0.15);  border: 3px solid var(--gruen); }
+.result-card.schwarz{ background: rgba(44,44,44,0.4);    border: 3px solid #666; }
+
+.result-farbe-label {
+  font-size: 12px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  opacity: 0.7;
+}
+
+.result-farbe-name {
+  font-size: clamp(32px, 10vw, 52px);
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.result-card.rot    .result-farbe-name { color: #e74c3c; }
+.result-card.gelb   .result-farbe-name { color: #f39c12; }
+.result-card.gruen  .result-farbe-name { color: #2ecc71; }
+.result-card.schwarz .result-farbe-name { color: #aaa; }
+
+.result-desc {
+  font-size: 15px;
+  margin-top: 8px;
+  opacity: 0.8;
+  line-height: 1.4;
+}
+
+.result-sk {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  margin-top: 6px;
+  opacity: 0.6;
+  letter-spacing: 1px;
+}
+
+.btn-zaehlen {
+  width: 100%;
+  padding: 20px;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: all 0.15s;
+}
+.btn-zaehlen:active { transform: scale(0.97); }
+.btn-zaehlen.rot    { background: var(--rot);    color: #fff; box-shadow: 0 4px 20px rgba(192,57,43,0.4); }
+.btn-zaehlen.gelb   { background: var(--gelb);   color: #fff; box-shadow: 0 4px 20px rgba(196,125,0,0.4); }
+.btn-zaehlen.gruen  { background: var(--gruen);  color: #fff; box-shadow: 0 4px 20px rgba(26,122,82,0.4); }
+.btn-zaehlen.schwarz{ background: #444;          color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+
+.btn-neu {
+  width: 100%;
+  padding: 14px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-neu:hover { border-color: #4895ef; color: #4895ef; }
+
+/* ===== COUNTER BAR (sticky bottom) ===== */
+#counter-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border-top: 2px solid var(--border);
+  padding: 10px 16px;
+  display: none;
+  z-index: 200;
+}
+
+.counter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.counter-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--card);
+  border-radius: 8px;
+  padding: 8px 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.counter-item:active { transform: scale(0.95); }
+
+.counter-item.rot    { border-color: rgba(192,57,43,0.5); }
+.counter-item.gelb   { border-color: rgba(196,125,0,0.5); }
+.counter-item.gruen  { border-color: rgba(26,122,82,0.5); }
+.counter-item.schwarz{ border-color: rgba(100,100,100,0.5); }
+
+.counter-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.counter-item.rot    .counter-label { color: #e74c3c; }
+.counter-item.gelb   .counter-label { color: #f39c12; }
+.counter-item.gruen  .counter-label { color: #2ecc71; }
+.counter-item.schwarz .counter-label{ color: #aaa; }
+
+.counter-num {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: clamp(22px, 6vw, 34px);
+  font-weight: 700;
+  line-height: 1;
+}
+.counter-item.rot    .counter-num { color: #e74c3c; }
+.counter-item.gelb   .counter-num { color: #f39c12; }
+.counter-item.gruen  .counter-num { color: #2ecc71; }
+.counter-item.schwarz .counter-num { color: #aaa; }
+
+.counter-plus {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--dim);
+  margin-top: 1px;
+}
+
+/* ===== SCHNELLZAEHLER SCREEN ===== */
+#screen-zaehler { padding-bottom: 140px; }
+
+.schnell-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.schnell-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 12px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  min-height: 130px;
+}
+.schnell-btn:active { transform: scale(0.95); }
+
+.schnell-btn.rot    { background: rgba(192,57,43,0.2); border: 2.5px solid var(--rot); }
+.schnell-btn.gelb   { background: rgba(196,125,0,0.2);  border: 2.5px solid var(--gelb); }
+.schnell-btn.gruen  { background: rgba(26,122,82,0.2);  border: 2.5px solid var(--gruen); }
+.schnell-btn.schwarz{ background: rgba(80,80,80,0.2);   border: 2.5px solid #555; }
+
+.schnell-btn:active.rot    { background: rgba(192,57,43,0.4); }
+.schnell-btn:active.gelb   { background: rgba(196,125,0,0.4); }
+.schnell-btn:active.gruen  { background: rgba(26,122,82,0.4); }
+.schnell-btn:active.schwarz{ background: rgba(80,80,80,0.4); }
+
+.schnell-name {
+  font-size: clamp(18px, 5vw, 24px);
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.schnell-btn.rot    .schnell-name { color: #e74c3c; }
+.schnell-btn.gelb   .schnell-name { color: #f39c12; }
+.schnell-btn.gruen  .schnell-name { color: #2ecc71; }
+.schnell-btn.schwarz .schnell-name{ color: #bbb; }
+
+.schnell-zahl {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: clamp(42px, 12vw, 64px);
+  font-weight: 700;
+  line-height: 1;
+}
+.schnell-btn.rot    .schnell-zahl { color: #e74c3c; }
+.schnell-btn.gelb   .schnell-zahl { color: #f39c12; }
+.schnell-btn.gruen  .schnell-zahl { color: #2ecc71; }
+.schnell-btn.schwarz .schnell-zahl{ color: #bbb; }
+
+.schnell-sk {
+  font-size: 10px;
+  letter-spacing: 2px;
+  opacity: 0.5;
+  margin-top: 4px;
+}
+
+.undo-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.btn-undo {
+  padding: 10px 6px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  color: var(--dim);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+.btn-undo:hover { border-color: var(--dim); color: var(--text); }
+
+/* ===== NAV TABS ===== */
+#nav-tabs {
+  display: none;
+  position: sticky;
+  top: 57px;
+  z-index: 90;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.nav-tab {
+  padding: 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--dim);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.nav-tab.active {
+  color: #e74c3c;
+  border-bottom-color: #e74c3c;
+}
+
+/* ===== FIREBASE STATUS ===== */
+#firebase-status {
+  position: fixed;
+  right: 12px;
+  bottom: 80px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--dim);
+  display: none;
+  z-index: 300;
+}
+#firebase-status.synced { color: #2ec4b6; border-color: rgba(46,196,182,0.3); }
+#firebase-status.error  { color: #e63946; border-color: rgba(230,57,70,0.3); }
+
+</style>
+</head>
+<body>
+
+<!-- FIREBASE URL – gleiche wie in der Einsatzführungs-App -->
+<script>
+const FIREBASE_URL = "https://vorsichtung-default-rtdb.europe-west1.firebasedatabase.app"
+</script>
+
+<header>
+  <div class="header-left">
+    <p>Berufsrettung Wien · MA 70</p>
+    <h1>mASAV Vorsichtung</h1>
+  </div>
+  <div class="header-right">
+    <span id="abschnitt-badge" style="display:none"></span>
+    <button class="btn-icon" id="btn-reset-abschnitt" style="display:none" onclick="resetAbschnitt()">⟳ Neu</button>
+  </div>
+</header>
+
+<div id="nav-tabs">
+  <div class="nav-inner">
+    <button class="nav-tab active" onclick="showTab('algo')" id="tab-algo">⚕ Vorsichtung</button>
+    <button class="nav-tab" onclick="showTab('zaehler')" id="tab-zaehler">⬛ Schnellzähler</button>
+  </div>
+</div>
+
+<!-- SCREEN: START -->
+<div id="screen-start" class="screen active">
+  <div style="font-size:48px;margin-bottom:8px">🚑</div>
+  <h2>mASAV Vorsichtung</h2>
+  <p>Strukturierte Vorsichtung nach dem mASAV-Algorithmus der Berufsrettung Wien</p>
+
+  <input id="abschnitt-input" type="text"
+    placeholder="Abschnitt / Standort (optional)"
+    autocomplete="off" autocorrect="off" spellcheck="false">
+
+  <button class="btn-start" onclick="startTriage()">Vorsichtung starten</button>
+
+  <div style="color:var(--dim);font-size:12px;letter-spacing:1px;text-align:center;margin-top:8px">
+    BERUFSRETTUNG WIEN · GSM-DFB · mASAV
+  </div>
+</div>
+
+<!-- SCREEN: ALGORITHMUS -->
+<div id="screen-algo" class="screen">
+  <div id="algo-content"></div>
+</div>
+
+<!-- SCREEN: SCHNELLZÄHLER -->
+<div id="screen-zaehler" class="screen">
+
+  <div class="schnell-grid">
+    <button class="schnell-btn rot" onclick="zaehleSchnell('rot')">
+      <div class="schnell-name">Rot</div>
+      <div class="schnell-zahl" id="sz-rot">0</div>
+      <div class="schnell-sk">SK I · Sofort</div>
+    </button>
+    <button class="schnell-btn gelb" onclick="zaehleSchnell('gelb')">
+      <div class="schnell-name">Gelb</div>
+      <div class="schnell-zahl" id="sz-gelb">0</div>
+      <div class="schnell-sk">SK II · Dringend</div>
+    </button>
+    <button class="schnell-btn gruen" onclick="zaehleSchnell('gruen')">
+      <div class="schnell-name">Grün</div>
+      <div class="schnell-zahl" id="sz-gruen">0</div>
+      <div class="schnell-sk">SK III · Leicht</div>
+    </button>
+    <button class="schnell-btn schwarz" onclick="zaehleSchnell('schwarz')">
+      <div class="schnell-name">Schwarz</div>
+      <div class="schnell-zahl" id="sz-schwarz">0</div>
+      <div class="schnell-sk">SK IV · Verstorben</div>
+    </button>
+  </div>
+
+  <div class="undo-row">
+    <button class="btn-undo" onclick="undoSchnell('rot')">– Rot</button>
+    <button class="btn-undo" onclick="undoSchnell('gelb')">– Gelb</button>
+    <button class="btn-undo" onclick="undoSchnell('gruen')">– Grün</button>
+    <button class="btn-undo" onclick="undoSchnell('schwarz')">– Schwarz</button>
+  </div>
+
+  <button class="btn-neu" onclick="resetZaehler()" style="margin-top:4px">Zähler zurücksetzen</button>
+</div>
+
+<!-- COUNTER BAR (sticky bottom) -->
+<div id="counter-bar">
+  <div class="counter-grid">
+    <div class="counter-item rot">
+      <div class="counter-label">Rot</div>
+      <div class="counter-num" id="c-rot">0</div>
+      <div class="counter-plus">SK I</div>
+    </div>
+    <div class="counter-item gelb">
+      <div class="counter-label">Gelb</div>
+      <div class="counter-num" id="c-gelb">0</div>
+      <div class="counter-plus">SK II</div>
+    </div>
+    <div class="counter-item gruen">
+      <div class="counter-label">Grün</div>
+      <div class="counter-num" id="c-gruen">0</div>
+      <div class="counter-plus">SK III</div>
+    </div>
+    <div class="counter-item schwarz">
+      <div class="counter-label">Schwarz</div>
+      <div class="counter-num" id="c-schwarz">0</div>
+      <div class="counter-plus">SK IV</div>
+    </div>
+  </div>
+</div>
+
+<div id="firebase-status">● SYNC</div>
+
+<script>
+// =============================================
+// STATE
+// =============================================
+let counts = { rot: 0, gelb: 0, gruen: 0, schwarz: 0 }
+let abschnittName = ""
+let aktuellerStep = 0
+let syncTimer = null
+
+// mASAV Algorithmus-Schritte
+const STEPS = [
+  {
+    id: "gehfaehig",
+    frage: "Ist der Patient gehfähig?",
+    hint: "Kann die Person selbstständig auf Aufforderung aufstehen und einige Schritte gehen?",
+    ja: "ergebnis_gruen",
+    nein: 1
+  },
+  {
+    id: "toedlich",
+    frage: "Liegen tödliche Verletzungen vor?",
+    hint: "Eindeutig nicht mit dem Leben vereinbare Verletzungen (z.B. Dekapitation, ausgedehnte Verbrennung, fehlende Vitalfunktionen trotz Basismaßnahmen).",
+    ja: "ergebnis_schwarz",
+    nein: 2
+  },
+  {
+    id: "atmung",
+    frage: "Liegt eine Atemstörung vor?",
+    hint: "Keine Spontanatmung vorhanden? Atemwege verlegt die sich nicht durch einfache Maßnahmen (Esmarch) freimachen lassen? Schwere Atemnot?",
+    ja: "ergebnis_rot",
+    nein: 3
+  },
+  {
+    id: "blutung",
+    frage: "Liegt eine nicht stillbare Blutung vor?",
+    hint: "Starke Blutung die mit einfachen Mitteln (direkter Druck, Tourniquet) nicht gestillt werden kann?",
+    ja: "ergebnis_rot",
+    nein: 4
+  },
+  {
+    id: "puls",
+    frage: "Kein Radialispuls tastbar?",
+    hint: "Handgelenk innen, Daumenseite: Ist der Puls nicht tastbar oder sehr schwach/fadenfömig?",
+    ja: "ergebnis_rot",
+    nein: 5
+  },
+  {
+    id: "anweisungen",
+    frage: "Befolgt der Patient einfache Anweisungen?",
+    hint: "Einfacher Test: 'Drücken Sie meine Hand' oder 'Zeigen Sie mir zwei Finger'. Reagiert der Patient gezielt?",
+    ja: "ergebnis_gelb",
+    nein: "ergebnis_rot"
+  }
+]
+
+const ERGEBNISSE = {
+  ergebnis_rot: {
+    farbe: "rot",
+    name: "ROT",
+    sk: "Sichtungskategorie I · SK1",
+    desc: "Lebensbedrohlich verletzt – sofortige Behandlung erforderlich"
+  },
+  ergebnis_gelb: {
+    farbe: "gelb",
+    name: "GELB",
+    sk: "Sichtungskategorie II · SK2",
+    desc: "Schwer verletzt – dringende Behandlung notwendig, kurze Wartezeit vertretbar"
+  },
+  ergebnis_gruen: {
+    farbe: "gruen",
+    name: "GRÜN",
+    sk: "Sichtungskategorie III · SK3",
+    desc: "Leicht verletzt – Behandlung kann aufgeschoben werden"
+  },
+  ergebnis_schwarz: {
+    farbe: "schwarz",
+    name: "SCHWARZ",
+    sk: "Sichtungskategorie IV · SK4",
+    desc: "Verstorben oder keine Überlebenschance – keine Behandlungsressourcen einsetzen"
+  }
+}
+
+// =============================================
+// START
+// =============================================
+function startTriage(){
+  abschnittName = document.getElementById("abschnitt-input").value.trim() || "Vorsichtung"
+
+  document.getElementById("abschnitt-badge").textContent = abschnittName
+  document.getElementById("abschnitt-badge").style.display = "inline-block"
+  document.getElementById("btn-reset-abschnitt").style.display = "inline-block"
+  document.getElementById("nav-tabs").style.display = "block"
+  document.getElementById("counter-bar").style.display = "block"
+  document.getElementById("firebase-status").style.display = "block"
+
+  document.getElementById("screen-start").classList.remove("active")
+  document.getElementById("screen-algo").classList.add("active")
+  document.getElementById("screen-zaehler").classList.remove("active")
+
+  zeigeSchritt(0)
+  syncFirebase()
+}
+
+function resetAbschnitt(){
+  if(!confirm("Abschnitt wirklich zurücksetzen? Alle Zählungen werden gelöscht.")) return
+  counts = { rot: 0, gelb: 0, gruen: 0, schwarz: 0 }
+  abschnittName = ""
+  aktuellerStep = 0
+
+  document.getElementById("abschnitt-badge").style.display = "none"
+  document.getElementById("btn-reset-abschnitt").style.display = "none"
+  document.getElementById("nav-tabs").style.display = "none"
+  document.getElementById("counter-bar").style.display = "none"
+  document.getElementById("firebase-status").style.display = "none"
+
+  document.getElementById("screen-start").classList.add("active")
+  document.getElementById("screen-algo").classList.remove("active")
+  document.getElementById("screen-zaehler").classList.remove("active")
+
+  document.getElementById("abschnitt-input").value = ""
+  updateCounterBar()
+  syncFirebase()
+}
+
+// =============================================
+// TABS
+// =============================================
+function showTab(tab){
+  document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"))
+  document.getElementById("screen-algo").classList.remove("active")
+  document.getElementById("screen-zaehler").classList.remove("active")
+
+  if(tab === "algo"){
+    document.getElementById("tab-algo").classList.add("active")
+    document.getElementById("screen-algo").classList.add("active")
+    zeigeSchritt(0)
+  } else {
+    document.getElementById("tab-zaehler").classList.add("active")
+    document.getElementById("screen-zaehler").classList.add("active")
+    updateSchnellZaehler()
+  }
+}
+
+// =============================================
+// ALGORITHMUS
+// =============================================
+function zeigeSchritt(stepIndex){
+  aktuellerStep = stepIndex
+  const step = STEPS[stepIndex]
+  const content = document.getElementById("algo-content")
+
+  content.innerHTML = `
+    <div style="font-size:11px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:10px;text-align:center">
+      SCHRITT ${stepIndex + 1} VON ${STEPS.length}
+    </div>
+    <div class="step-card">
+      <div class="step-num">Schritt ${stepIndex + 1}</div>
+      <div class="step-question">${step.frage}</div>
+      ${step.hint ? `<div class="step-hint">${step.hint}</div>` : ""}
+      <div class="step-buttons">
+        <button class="step-btn btn-ja" onclick="antworten(true)">✓ Ja</button>
+        <button class="step-btn btn-nein" onclick="antworten(false)">✗ Nein</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px">
+      ${STEPS.map((s,i) => `<div style="width:${100/STEPS.length - 2}%;max-width:48px;height:4px;border-radius:2px;background:${i < stepIndex ? '#e74c3c' : i === stepIndex ? '#4895ef' : 'var(--border)'}"></div>`).join("")}
+    </div>
+  `
+}
+
+function antworten(ja){
+  const step = STEPS[aktuellerStep]
+  const naechstes = ja ? step.ja : step.nein
+
+  if(typeof naechstes === "string"){
+    zeigeErgebnis(naechstes)
+  } else {
+    zeigeSchritt(naechstes)
+  }
+}
+
+function zeigeErgebnis(ergebnisKey){
+  const e = ERGEBNISSE[ergebnisKey]
+  const content = document.getElementById("algo-content")
+
+  content.innerHTML = `
+    <div class="result-card ${e.farbe}">
+      <div class="result-farbe-label">Sichtungsergebnis</div>
+      <div class="result-farbe-name">${e.name}</div>
+      <div class="result-desc">${e.desc}</div>
+      <div class="result-sk">${e.sk}</div>
+    </div>
+
+    <button class="btn-zaehlen ${e.farbe}" onclick="zaehleUndNeu('${e.farbe}')">
+      + Als ${e.name} zählen &amp; nächster Patient
+    </button>
+
+    <button class="btn-neu" onclick="zeigeSchritt(0)" style="margin-bottom:8px">
+      Nochmal ohne Zählen
+    </button>
+
+    <button class="btn-neu" onclick="showTab('zaehler')">
+      Zur Übersicht
+    </button>
+  `
+}
+
+function zaehleUndNeu(farbe){
+  counts[farbe]++
+  updateCounterBar()
+  updateSchnellZaehler()
+  syncFirebase()
+
+  // Kurzes visuelles Feedback
+  const bar = document.getElementById("counter-bar")
+  bar.style.transform = "translateY(-4px)"
+  setTimeout(() => bar.style.transform = "", 200)
+
+  // Zum nächsten Patienten
+  zeigeSchritt(0)
+}
+
+// =============================================
+// SCHNELLZÄHLER
+// =============================================
+function zaehleSchnell(farbe){
+  counts[farbe]++
+  updateCounterBar()
+  updateSchnellZaehler()
+  syncFirebase()
+}
+
+function undoSchnell(farbe){
+  if(counts[farbe] > 0){
+    counts[farbe]--
+    updateCounterBar()
+    updateSchnellZaehler()
+    syncFirebase()
+  }
+}
+
+function resetZaehler(){
+  if(!confirm("Alle Zähler auf 0 zurücksetzen?")) return
+  counts = { rot: 0, gelb: 0, gruen: 0, schwarz: 0 }
+  updateCounterBar()
+  updateSchnellZaehler()
+  syncFirebase()
+}
+
+function updateCounterBar(){
+  document.getElementById("c-rot").textContent    = counts.rot
+  document.getElementById("c-gelb").textContent   = counts.gelb
+  document.getElementById("c-gruen").textContent  = counts.gruen
+  document.getElementById("c-schwarz").textContent= counts.schwarz
+}
+
+function updateSchnellZaehler(){
+  document.getElementById("sz-rot").textContent    = counts.rot
+  document.getElementById("sz-gelb").textContent   = counts.gelb
+  document.getElementById("sz-gruen").textContent  = counts.gruen
+  document.getElementById("sz-schwarz").textContent= counts.schwarz
+}
+
+// =============================================
+// FIREBASE SYNC
+// =============================================
+function syncFirebase(){
+  if(!FIREBASE_URL) return
+
+  const data = {
+    ts: new Date().toISOString(),
+    abschnitt: abschnittName,
+    rot:    counts.rot,
+    gelb:   counts.gelb,
+    gruen:  counts.gruen,
+    schwarz: counts.schwarz,
+    gesamt: counts.rot + counts.gelb + counts.gruen + counts.schwarz
+  }
+
+  // Schreibe unter /triage/<abschnittName>
+  const key = abschnittName.replace(/[^a-zA-Z0-9äöüÄÖÜß\-_]/g, "_") || "default"
+
+  fetch(FIREBASE_URL + "/triage/" + key + ".json", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  }).then(() => {
+    const el = document.getElementById("firebase-status")
+    el.textContent = "● SYNC"
+    el.className = "synced"
+    setTimeout(() => { el.textContent = "● LIVE"; }, 1000)
+  }).catch(() => {
+    const el = document.getElementById("firebase-status")
+    el.textContent = "● OFFLINE"
+    el.className = "error"
+  })
+}
+</script>
+</body>
+</html>
