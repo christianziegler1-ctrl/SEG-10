@@ -164,6 +164,11 @@ const FIREBASE_URL = "https://vorsichtung-default-rtdb.europe-west1.firebasedata
   <div id="status">● Verbinde…</div>
 </header>
 
+<div id="filter-bar" style="display:none;margin-bottom:10px">
+  <div style="font-size:10px;letter-spacing:2px;color:#4a5268;text-transform:uppercase;margin-bottom:6px">Ansicht:</div>
+  <div id="filter-buttons" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+</div>
+
 <div id="no-data">Warte auf Vorsichtungs-Daten…</div>
 
 <div id="main">
@@ -207,6 +212,86 @@ const FIREBASE_URL = "https://vorsichtung-default-rtdb.europe-west1.firebasedata
 
 <script>
 const statusEl = document.getElementById("status")
+let aktiverFilter = null // null = alle
+let alleEinsaetze = {}
+
+function setFilter(key){
+  aktiverFilter = (aktiverFilter === key) ? null : key
+  document.querySelectorAll(".filter-btn").forEach(b => {
+    b.style.borderColor = b.dataset.key === aktiverFilter ? "#4895ef" : "#2a3048"
+    b.style.color       = b.dataset.key === aktiverFilter ? "#4895ef" : "#4a5268"
+  })
+  renderDashboard(alleEinsaetze)
+}
+
+function renderDashboard(data){
+  alleEinsaetze = data
+  const einsaetze = Object.entries(data)
+    .map(([k,v]) => ({key:k, ...v}))
+    .filter(e => e.abschnitt && e.abschnitt !== "-" && (e.rot||0)+(e.gelb||0)+(e.gruen||0)+(e.schwarz||0) > 0)
+
+  // Filter-Buttons
+  const filterBar = document.getElementById("filter-bar")
+  const filterBtns = document.getElementById("filter-buttons")
+  if(einsaetze.length > 1){
+    filterBar.style.display = "block"
+    filterBtns.innerHTML = [
+      {key:null, label:"Alle"},
+      ...einsaetze.map(e => ({key:e.key, label:e.abschnitt}))
+    ].map(f => `
+      <button class="filter-btn" data-key="${f.key}"
+        onclick="setFilter('${f.key}')"
+        style="padding:6px 12px;background:#1a1f2e;border:1.5px solid ${aktiverFilter===f.key?'#4895ef':'#2a3048'};
+               border-radius:20px;color:${aktiverFilter===f.key?'#4895ef':'#4a5268'};
+               font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;
+               letter-spacing:1px;text-transform:uppercase;cursor:pointer;">
+        ${f.label}
+      </button>
+    `).join("")
+  } else {
+    filterBar.style.display = "none"
+  }
+
+  // Gefilterte Daten
+  const gefiltert = aktiverFilter
+    ? einsaetze.filter(e => e.key === aktiverFilter)
+    : einsaetze
+
+  let rot=0,gelb=0,gruen=0,schwarz=0
+  gefiltert.forEach(e => {
+    rot     += e.rot     || 0
+    gelb    += e.gelb    || 0
+    gruen   += e.gruen   || 0
+    schwarz += e.schwarz || 0
+  })
+
+  document.getElementById("no-data").style.display = "none"
+  document.getElementById("main").style.display = "block"
+  document.getElementById("d-gesamt").textContent = rot+gelb+gruen+schwarz
+  document.getElementById("d-rot").textContent    = rot
+  document.getElementById("d-gelb").textContent   = gelb
+  document.getElementById("d-gruen").textContent  = gruen
+  document.getElementById("d-schwarz").textContent= schwarz
+
+  const card = document.getElementById("abschnitte-card")
+  const list = document.getElementById("abschnitte-list")
+  if(gefiltert.length > 1){
+    card.style.display = "block"
+    list.innerHTML = gefiltert.sort((a,b)=>(b.rot||0)-(a.rot||0)).map(ab => `
+      <div class="abschnitt-row">
+        <span class="abschnitt-name">${ab.abschnitt}</span>
+        <span class="ab-rot">${ab.rot||0}</span>
+        <span class="ab-gelb">${ab.gelb||0}</span>
+        <span class="ab-gruen">${ab.gruen||0}</span>
+        <span class="ab-schwarz">${ab.schwarz||0}</span>
+      </div>`).join("")
+  } else {
+    card.style.display = "none"
+  }
+
+  const ts = gefiltert.reduce((a,b)=>a.ts>b.ts?a:b,{ts:""}).ts
+  if(ts) document.getElementById("lastUpdate").textContent = new Date(ts).toLocaleTimeString("de-AT")
+}
 
 async function fetchData(){
   if(!FIREBASE_URL){ statusEl.textContent = "⚠ Keine Firebase URL"; statusEl.className = "offline"; return }
