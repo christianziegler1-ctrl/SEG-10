@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vorsichtung Live – Berufsrettung Wien</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&display=swap');
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Rajdhani',sans-serif; font-weight:600; background:#0d0f14; color:#e8ecf4; min-height:100vh; padding:12px; }
+header { background:#141720; border-bottom:3px solid #c0392b; border-radius:8px; padding:10px 16px; display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+header h1 { font-size:clamp(14px,3vw,20px); letter-spacing:3px; text-transform:uppercase; }
+header p  { font-size:9px; letter-spacing:2px; color:#4a5268; text-transform:uppercase; }
+#status { font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:1px; color:#4a5268; }
+#status.online { color:#2ec4b6; } #status.offline { color:#e63946; }
+#einsatz-filter { margin-bottom:10px; display:none; }
+.ef-label { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:#4a5268; margin-bottom:6px; }
+#ef-buttons { display:flex; flex-wrap:wrap; gap:6px; }
+.ef-btn { padding:7px 14px; background:#1a1f2e; border:1.5px solid #2a3048; border-radius:20px; color:#4a5268; font-family:'Rajdhani',sans-serif; font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer; transition:all 0.15s; }
+.ef-btn.active { border-color:#4895ef; color:#4895ef; background:rgba(72,149,239,0.1); }
+.gesamt-card { background:#1a1f2e; border:1.5px solid #2a3048; border-radius:8px; padding:14px 16px; text-align:center; margin-bottom:10px; }
+.gl { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:#4895ef; border-bottom:1px solid #2a3048; padding-bottom:6px; margin-bottom:8px; }
+.gn { font-family:'Share Tech Mono',monospace; font-size:clamp(32px,9vw,52px); font-weight:700; color:#f4d35e; }
+.farb-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+.fc { background:#1a1f2e; border-radius:10px; padding:16px 12px; text-align:center; }
+.fc.rot    { border:2.5px solid #c0392b; background:rgba(192,57,43,0.1); }
+.fc.gelb   { border:2.5px solid #c47d00; background:rgba(196,125,0,0.1); }
+.fc.gruen  { border:2.5px solid #1a7a52; background:rgba(26,122,82,0.1); }
+.fc.schwarz{ border:2.5px solid #555;    background:rgba(80,80,80,0.1); }
+.fn { font-size:clamp(15px,4vw,20px); font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px; }
+.fc.rot    .fn{color:#e74c3c;} .fc.gelb .fn{color:#f39c12;} .fc.gruen .fn{color:#2ecc71;} .fc.schwarz .fn{color:#bbb;}
+.fz { font-family:'Share Tech Mono',monospace; font-size:clamp(36px,10vw,58px); font-weight:700; line-height:1; }
+.fc.rot    .fz{color:#e74c3c;} .fc.gelb .fz{color:#f39c12;} .fc.gruen .fz{color:#2ecc71;} .fc.schwarz .fz{color:#bbb;}
+.fsk { font-size:10px; letter-spacing:1px; opacity:0.5; margin-top:4px; }
+.abschnitte-card { background:#1a1f2e; border:1.5px solid #2a3048; border-radius:8px; padding:12px 14px; margin-bottom:10px; display:none; }
+.at { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:#4895ef; border-bottom:1px solid #2a3048; padding-bottom:6px; margin-bottom:10px; }
+.ab-row { display:grid; grid-template-columns:1fr auto auto auto auto; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+.ab-row:last-child { border-bottom:none; }
+.ab-name { font-size:clamp(13px,2.5vw,16px); font-weight:700; }
+.abr{color:#e74c3c;font-family:'Share Tech Mono',monospace;font-weight:700;font-size:clamp(16px,3.5vw,22px);}
+.abg{color:#f39c12;font-family:'Share Tech Mono',monospace;font-weight:700;font-size:clamp(16px,3.5vw,22px);}
+.abgr{color:#2ecc71;font-family:'Share Tech Mono',monospace;font-weight:700;font-size:clamp(16px,3.5vw,22px);}
+.abs{color:#bbb;font-family:'Share Tech Mono',monospace;font-weight:700;font-size:clamp(16px,3.5vw,22px);}
+#no-data { text-align:center; padding:40px; color:#4a5268; font-size:14px; letter-spacing:2px; }
+#main { display:none; }
+footer { text-align:center; color:#2a3048; font-size:10px; letter-spacing:2px; margin-top:14px; font-family:'Share Tech Mono',monospace; }
+</style>
+</head>
+<body>
+<header>
+  <div><p>Berufsrettung Wien · MA 70</p><h1>Vorsichtung Live</h1></div>
+  <div id="status">● Verbinde…</div>
+</header>
+<div id="einsatz-filter">
+  <div class="ef-label">Einsatz auswählen:</div>
+  <div id="ef-buttons"></div>
+</div>
+<div id="no-data">Warte auf Vorsichtungs-Daten…</div>
+<div id="main">
+  <div class="gesamt-card">
+    <div class="gl" id="gl">Gesamt gesichtet</div>
+    <div class="gn" id="d-gesamt">0</div>
+  </div>
+  <div class="farb-grid">
+    <div class="fc rot">    <div class="fn">Rot</div>    <div class="fz" id="d-rot">0</div>    <div class="fsk">SK I · Sofort</div></div>
+    <div class="fc gelb">   <div class="fn">Gelb</div>   <div class="fz" id="d-gelb">0</div>   <div class="fsk">SK II · Dringend</div></div>
+    <div class="fc gruen">  <div class="fn">Grün</div>   <div class="fz" id="d-gruen">0</div>  <div class="fsk">SK III · Leicht</div></div>
+    <div class="fc schwarz"><div class="fn">Schwarz</div><div class="fz" id="d-schwarz">0</div><div class="fsk">SK IV · Verstorben</div></div>
+  </div>
+  <div class="abschnitte-card" id="abschnitte-card">
+    <div class="at">Abschnitte</div>
+    <div id="abschnitte-list"></div>
+  </div>
+</div>
+<footer>LETZTE AKTUALISIERUNG: <span id="lu">–</span></footer>
+
+<script>
+const FB = "https://vorsichtung-default-rtdb.europe-west1.firebasedatabase.app"
+const statusEl = document.getElementById("status")
+let aktiverEinsatz = null
+let alleData = {}
+
+function setEinsatz(key){
+  aktiverEinsatz = (aktiverEinsatz===key) ? null : key
+  document.querySelectorAll(".ef-btn").forEach(b=>b.classList.toggle("active", b.dataset.key===aktiverEinsatz))
+  render()
+}
+
+function render(){
+  const einsaetze = Object.entries(alleData).filter(([k,v])=>v&&v.name)
+  if(!einsaetze.length) return
+
+  // Filter-Buttons
+  const fd=document.getElementById("einsatz-filter"), btns=document.getElementById("ef-buttons")
+  if(einsaetze.length>1){
+    fd.style.display="block"
+    btns.innerHTML=einsaetze.map(([k,e])=>
+      `<button class="ef-btn${aktiverEinsatz===k?" active":""}" data-key="${k}" onclick="setEinsatz('${k}')">${e.name}</button>`
+    ).join("")
+  } else {
+    fd.style.display="none"
+    aktiverEinsatz=einsaetze[0][0]
+  }
+
+  const gefiltert = aktiverEinsatz ? einsaetze.filter(([k])=>k===aktiverEinsatz) : einsaetze
+  let r=0,g=0,gr=0,sw=0; const abs=[]
+
+  gefiltert.forEach(([k,e])=>{
+    const a=e.abschnitte?Object.values(e.abschnitte):[]
+    a.forEach(ab=>{ r+=ab.rot||0; g+=ab.gelb||0; gr+=ab.gruen||0; sw+=ab.schwarz||0; if(ab.name) abs.push(ab) })
+  })
+
+  document.getElementById("no-data").style.display="none"
+  document.getElementById("main").style.display="block"
+  document.getElementById("gl").textContent = aktiverEinsatz&&gefiltert.length ? "Gesamt – "+gefiltert[0][1].name : "Gesamt gesichtet"
+  document.getElementById("d-gesamt").textContent=r+g+gr+sw
+  document.getElementById("d-rot").textContent=r
+  document.getElementById("d-gelb").textContent=g
+  document.getElementById("d-gruen").textContent=gr
+  document.getElementById("d-schwarz").textContent=sw
+
+  const card=document.getElementById("abschnitte-card"), list=document.getElementById("abschnitte-list")
+  if(abs.length>1){
+    card.style.display="block"
+    list.innerHTML=abs.sort((a,b)=>(b.rot||0)-(a.rot||0)).map(ab=>
+      `<div class="ab-row"><span class="ab-name">${ab.name}</span><span class="abr">${ab.rot||0}</span><span class="abg">${ab.gelb||0}</span><span class="abgr">${ab.gruen||0}</span><span class="abs">${ab.schwarz||0}</span></div>`
+    ).join("")
+  } else { card.style.display="none" }
+}
+
+async function fetchData(){
+  try {
+    const res=await fetch(FB+"/einsaetze.json?t="+Date.now())
+    if(!res.ok) throw new Error()
+    const data=await res.json()
+    if(!data){ statusEl.textContent="● Warte…"; statusEl.className="offline"; return }
+    alleData=data; render()
+    const ts=Object.values(data).flatMap(e=>e.abschnitte?Object.values(e.abschnitte):[]).filter(a=>a.ts).sort((a,b)=>b.ts.localeCompare(a.ts))[0]?.ts
+    if(ts) document.getElementById("lu").textContent=new Date(ts).toLocaleTimeString("de-AT")
+    statusEl.textContent="● LIVE"; statusEl.className="online"
+  } catch { statusEl.textContent="● Keine Verbindung"; statusEl.className="offline" }
+}
+
+fetchData()
+setInterval(fetchData,5000)
+</script>
+</body>
+</html>

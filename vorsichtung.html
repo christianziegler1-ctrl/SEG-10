@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>mASAV Vorsichtung – Berufsrettung Wien</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --rot:#c0392b; --gelb:#c47d00; --gruen:#1a7a52; --bg:#0d0f14;
+  --panel:#141720; --card:#1a1f2e; --border:#2a3048; --text:#e8ecf4;
+  --dim:#4a5268; --blue:#4895ef;
+}
+body { font-family:'Rajdhani',sans-serif; font-weight:600; background:var(--bg); color:var(--text); min-height:100vh; }
+
+header { background:var(--panel); border-bottom:3px solid var(--rot); padding:10px 16px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; }
+.hl h1 { font-size:clamp(15px,4vw,21px); letter-spacing:2px; text-transform:uppercase; }
+.hl p  { font-size:10px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; }
+#hinfo { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--blue); text-align:right; }
+
+.screen { display:none; padding:16px; max-width:540px; margin:0 auto; padding-bottom:100px; }
+.screen.active { display:block; }
+
+/* START */
+#screen-einsatz { display:flex; flex-direction:column; align-items:center; gap:12px; padding-top:20px; min-height:80vh; }
+#screen-einsatz h2 { font-size:clamp(18px,5vw,28px); letter-spacing:3px; text-transform:uppercase; }
+#screen-einsatz > p { color:var(--dim); font-size:13px; text-align:center; max-width:340px; line-height:1.5; }
+
+.slabel { width:100%; max-width:360px; font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--dim); border-bottom:1px solid var(--border); padding-bottom:5px; margin-top:4px; }
+.inp { width:100%; max-width:360px; padding:13px 16px; background:var(--card); border:2px solid var(--border); border-radius:8px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:18px; font-weight:700; letter-spacing:1px; outline:none; text-align:center; }
+.inp:focus { border-color:var(--blue); }
+.inp::placeholder { color:var(--dim); font-weight:600; }
+
+.btn-p { width:100%; max-width:360px; padding:15px; background:var(--rot); color:#fff; border:none; border-radius:8px; font-family:'Rajdhani',sans-serif; font-size:17px; font-weight:700; letter-spacing:2px; text-transform:uppercase; cursor:pointer; transition:all 0.15s; }
+.btn-p:active { transform:scale(0.97); }
+.btn-s { width:100%; max-width:360px; padding:11px; background:transparent; border:1.5px solid var(--border); color:var(--dim); border-radius:8px; font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer; transition:all 0.15s; }
+.btn-s:hover { border-color:var(--blue); color:var(--blue); }
+
+.e-item { display:flex; justify-content:space-between; align-items:center; padding:11px 13px; background:var(--card); border:1.5px solid var(--border); border-radius:8px; cursor:pointer; margin-bottom:6px; transition:all 0.15s; }
+.e-item:hover { border-color:var(--blue); }
+.e-item:active { transform:scale(0.98); }
+.ei-n { font-size:15px; font-weight:700; letter-spacing:1px; }
+.ei-c { font-family:'Share Tech Mono',monospace; font-size:12px; }
+.er { color:#e74c3c; } .eg { color:#f39c12; } .egr { color:#2ecc71; }
+
+/* SUBHEADER */
+#subheader { background:var(--panel); border-bottom:1px solid var(--border); padding:7px 16px; display:none; position:sticky; top:57px; z-index:90; }
+.shi { max-width:540px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+#einsatz-label { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--blue); }
+.btn-back { background:transparent; border:1px solid var(--border); color:var(--dim); padding:4px 10px; border-radius:4px; font-family:'Rajdhani',sans-serif; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer; }
+.btn-back:hover { border-color:var(--rot); color:var(--rot); }
+
+/* TABS */
+#navtabs { display:none; position:sticky; top:92px; z-index:89; background:var(--bg); border-bottom:1px solid var(--border); }
+.ni { display:grid; grid-template-columns:1fr 1fr; max-width:540px; margin:0 auto; }
+.ntab { padding:10px; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--dim); font-family:'Rajdhani',sans-serif; font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; cursor:pointer; text-align:center; }
+.ntab.active { color:#e74c3c; border-bottom-color:#e74c3c; }
+
+/* ABSCHNITT */
+#screen-abschnitt { display:flex; flex-direction:column; align-items:center; gap:12px; padding-top:16px; }
+.a-item { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:var(--card); border:1.5px solid var(--border); border-left:4px solid var(--blue); border-radius:8px; cursor:pointer; margin-bottom:6px; transition:all 0.15s; }
+.a-item:hover { border-color:var(--blue); }
+.a-item:active { transform:scale(0.98); }
+.ai-n { font-size:15px; font-weight:700; letter-spacing:1px; }
+.ai-c { font-family:'Share Tech Mono',monospace; font-size:13px; }
+
+/* ALGO */
+.step-card { background:var(--card); border:2px solid var(--border); border-radius:12px; padding:20px; margin-bottom:12px; animation:fi 0.2s ease; }
+@keyframes fi { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.sq { font-size:clamp(18px,5vw,26px); font-weight:700; line-height:1.3; margin-bottom:10px; }
+.sh { font-size:13px; color:var(--dim); margin-bottom:13px; line-height:1.5; font-style:italic; }
+.sbtns { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.sbtn { padding:15px 10px; border:none; border-radius:8px; font-family:'Rajdhani',sans-serif; font-size:17px; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer; transition:all 0.15s; }
+.sbtn:active { transform:scale(0.96); }
+.bja   { background:#1a7a52; color:#fff; }
+.bnein { background:var(--card); color:var(--text); border:1.5px solid var(--border); }
+
+.rc { border-radius:12px; padding:22px 18px; text-align:center; margin-bottom:12px; animation:fi 0.3s ease; }
+.rc.rot    { background:rgba(192,57,43,0.15); border:3px solid var(--rot); }
+.rc.gelb   { background:rgba(196,125,0,0.15);  border:3px solid var(--gelb); }
+.rc.gruen  { background:rgba(26,122,82,0.15);  border:3px solid var(--gruen); }
+.rc.schwarz{ background:rgba(44,44,44,0.4);    border:3px solid #666; }
+.rn { font-size:clamp(30px,9vw,50px); font-weight:700; letter-spacing:3px; text-transform:uppercase; }
+.rc.rot    .rn { color:#e74c3c; }
+.rc.gelb   .rn { color:#f39c12; }
+.rc.gruen  .rn { color:#2ecc71; }
+.rc.schwarz .rn{ color:#aaa; }
+.rd { font-size:14px; margin-top:6px; opacity:0.8; line-height:1.4; }
+.rsk{ font-family:'Share Tech Mono',monospace; font-size:11px; margin-top:4px; opacity:0.5; }
+
+.bzl { width:100%; padding:17px; border:none; border-radius:10px; font-family:'Rajdhani',sans-serif; font-size:19px; font-weight:700; letter-spacing:2px; text-transform:uppercase; cursor:pointer; margin-bottom:8px; }
+.bzl:active { transform:scale(0.97); }
+.bzl.rot    { background:var(--rot);   color:#fff; }
+.bzl.gelb   { background:var(--gelb);  color:#fff; }
+.bzl.gruen  { background:var(--gruen); color:#fff; }
+.bzl.schwarz{ background:#444;         color:#fff; }
+.bnu { width:100%; padding:12px; background:var(--card); border:1.5px solid var(--border); color:var(--text); border-radius:8px; font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer; margin-bottom:6px; }
+.bnu:hover { border-color:var(--blue); color:var(--blue); }
+
+/* SCHNELL */
+.sg { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+.sb { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:18px 10px; border:none; border-radius:12px; cursor:pointer; transition:all 0.15s; min-height:115px; }
+.sb:active { transform:scale(0.95); }
+.sb.rot    { background:rgba(192,57,43,0.2); border:2.5px solid var(--rot); }
+.sb.gelb   { background:rgba(196,125,0,0.2);  border:2.5px solid var(--gelb); }
+.sb.gruen  { background:rgba(26,122,82,0.2);  border:2.5px solid var(--gruen); }
+.sb.schwarz{ background:rgba(80,80,80,0.2);   border:2.5px solid #555; }
+.sbn { font-size:clamp(15px,4vw,20px); font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:3px; }
+.sb.rot    .sbn { color:#e74c3c; } .sb.gelb   .sbn { color:#f39c12; }
+.sb.gruen  .sbn { color:#2ecc71; } .sb.schwarz .sbn{ color:#bbb; }
+.sbz { font-family:'Share Tech Mono',monospace; font-size:clamp(36px,10vw,54px); font-weight:700; line-height:1; }
+.sb.rot    .sbz { color:#e74c3c; } .sb.gelb   .sbz { color:#f39c12; }
+.sb.gruen  .sbz { color:#2ecc71; } .sb.schwarz .sbz{ color:#bbb; }
+.sbs { font-size:10px; letter-spacing:2px; opacity:0.5; margin-top:3px; }
+.ur { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px; margin-bottom:10px; }
+.bu { padding:8px 4px; background:var(--card); border:1.5px solid var(--border); border-radius:6px; color:var(--dim); font-family:'Rajdhani',sans-serif; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; cursor:pointer; text-align:center; }
+.bu:hover { color:var(--text); }
+
+/* COUNTER BAR */
+#cbar { position:fixed; bottom:0; left:0; right:0; background:var(--panel); border-top:2px solid var(--border); padding:7px 16px; display:none; z-index:200; }
+.cg { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px; max-width:540px; margin:0 auto; }
+.ci { display:flex; flex-direction:column; align-items:center; background:var(--card); border-radius:6px; padding:5px 4px; border:2px solid transparent; }
+.ci.rot    { border-color:rgba(192,57,43,0.5); } .ci.gelb   { border-color:rgba(196,125,0,0.5); }
+.ci.gruen  { border-color:rgba(26,122,82,0.5); } .ci.schwarz{ border-color:rgba(100,100,100,0.5); }
+.cl { font-size:9px; letter-spacing:2px; text-transform:uppercase; margin-bottom:1px; }
+.ci.rot    .cl { color:#e74c3c; } .ci.gelb   .cl { color:#f39c12; }
+.ci.gruen  .cl { color:#2ecc71; } .ci.schwarz .cl{ color:#aaa; }
+.cn { font-family:'Share Tech Mono',monospace; font-size:clamp(19px,5vw,28px); font-weight:700; line-height:1; }
+.ci.rot    .cn { color:#e74c3c; } .ci.gelb   .cn { color:#f39c12; }
+.ci.gruen  .cn { color:#2ecc71; } .ci.schwarz .cn{ color:#aaa; }
+
+#fdot { position:fixed; right:10px; bottom:68px; width:8px; height:8px; border-radius:50%; background:var(--dim); display:none; z-index:300; transition:background 0.3s; }
+#fdot.ok  { background:#2ec4b6; }
+#fdot.err { background:#e63946; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hl">
+    <p>Berufsrettung Wien · MA 70</p>
+    <h1>mASAV Vorsichtung</h1>
+  </div>
+  <div id="hinfo"></div>
+</header>
+
+<div id="subheader">
+  <div class="shi">
+    <div id="einsatz-label"></div>
+    <button class="btn-back" onclick="zurueck()">⟵ Wechseln</button>
+  </div>
+</div>
+
+<div id="navtabs">
+  <div class="ni">
+    <button class="ntab active" id="t-algo"    onclick="tab('algo')">⚕ Algorithmus</button>
+    <button class="ntab"        id="t-zaehler" onclick="tab('zaehler')">⬛ Schnellzähler</button>
+  </div>
+</div>
+
+<!-- SCREEN 1: EINSATZ -->
+<div id="screen-einsatz" class="screen active">
+  <div style="font-size:42px">🚑</div>
+  <h2>Vorsichtung</h2>
+  <p>Wähle einen laufenden Einsatz oder starte einen neuen</p>
+
+  <div id="laufende-section" style="display:none;width:100%;max-width:360px">
+    <div class="slabel">Laufende Einsätze</div>
+    <div id="laufende-liste" style="margin-top:8px"></div>
+  </div>
+
+  <div style="width:100%;max-width:360px">
+    <div class="slabel">Neuer Einsatz</div>
+    <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
+      <input class="inp" id="inp-einsatz" placeholder="Name / Nummer / Ort"
+        autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="btn-p" onclick="neuerEinsatz()">+ Neuen Einsatz starten</button>
+    </div>
+  </div>
+
+  <button class="btn-s" id="btn-alles-del" style="display:none;border-color:rgba(192,57,43,0.4);color:var(--rot)" onclick="alleLoeschen()">
+    ✕ Alle Einsätze löschen
+  </button>
+
+  <div style="color:var(--dim);font-size:11px;letter-spacing:1px;text-align:center">BERUFSRETTUNG WIEN · mASAV</div>
+</div>
+
+<!-- SCREEN 2: ABSCHNITT -->
+<div id="screen-abschnitt" class="screen">
+  <div style="width:100%;max-width:360px">
+    <div class="slabel">Abschnitte</div>
+    <div id="abschnitt-liste" style="margin-top:8px"></div>
+  </div>
+  <div style="width:100%;max-width:360px">
+    <div class="slabel" style="margin-top:4px">Neuer Abschnitt</div>
+    <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
+      <input class="inp" id="inp-abschnitt" placeholder="z.B. PSS Nord, Abschnitt 1"
+        autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="btn-p" onclick="neuerAbschnitt()">+ Abschnitt starten</button>
+    </div>
+  </div>
+  <button class="btn-s" style="border-color:rgba(192,57,43,0.35);color:var(--rot)" onclick="einsatzDel()">✕ Diesen Einsatz löschen</button>
+</div>
+
+<!-- SCREEN 3: ALGO -->
+<div id="screen-algo" class="screen">
+  <div id="algo-content"></div>
+</div>
+
+<!-- SCREEN 4: ZAEHLER -->
+<div id="screen-zaehler" class="screen">
+  <div class="sg">
+    <button class="sb rot"    onclick="zs('rot')">    <div class="sbn">Rot</div>    <div class="sbz" id="sz-rot">0</div>    <div class="sbs">SK I · Sofort</div></button>
+    <button class="sb gelb"   onclick="zs('gelb')">   <div class="sbn">Gelb</div>   <div class="sbz" id="sz-gelb">0</div>   <div class="sbs">SK II · Dringend</div></button>
+    <button class="sb gruen"  onclick="zs('gruen')">  <div class="sbn">Grün</div>   <div class="sbz" id="sz-gruen">0</div>  <div class="sbs">SK III · Leicht</div></button>
+    <button class="sb schwarz" onclick="zs('schwarz')"><div class="sbn">Schwarz</div><div class="sbz" id="sz-schwarz">0</div><div class="sbs">SK IV · Verstorben</div></button>
+  </div>
+  <div class="ur">
+    <button class="bu" onclick="undo('rot')">– Rot</button>
+    <button class="bu" onclick="undo('gelb')">– Gelb</button>
+    <button class="bu" onclick="undo('gruen')">– Grün</button>
+    <button class="bu" onclick="undo('schwarz')">– Schwarz</button>
+  </div>
+  <button class="bnu" onclick="reset0()">Zähler auf 0</button>
+</div>
+
+<!-- COUNTER BAR -->
+<div id="cbar">
+  <div class="cg">
+    <div class="ci rot">    <div class="cl">Rot</div>    <div class="cn" id="c-rot">0</div></div>
+    <div class="ci gelb">   <div class="cl">Gelb</div>   <div class="cn" id="c-gelb">0</div></div>
+    <div class="ci gruen">  <div class="cl">Grün</div>   <div class="cn" id="c-gruen">0</div></div>
+    <div class="ci schwarz"><div class="cl">Schwarz</div><div class="cn" id="c-schwarz">0</div></div>
+  </div>
+</div>
+<div id="fdot"></div>
+
+<script>
+const FB = "https://vorsichtung-default-rtdb.europe-west1.firebasedatabase.app"
+
+let einsatzKey = null, einsatzName = ""
+let abschnittKey = null, abschnittName = ""
+let counts = {rot:0,gelb:0,gruen:0,schwarz:0}
+let step = 0
+
+// ── Firebase ──
+function fkey(s){ return (s||"x").replace(/[^a-zA-Z0-9\u00e4\u00f6\u00fc\u00c4\u00d6\u00dc\u00df]/g,"_").substring(0,40) }
+async function fget(p){ try{ const r=await fetch(FB+p+"?t="+Date.now()); return r.ok?await r.json():null }catch{return null} }
+async function fset(p,d){ try{ await fetch(FB+p,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}) }catch{} }
+async function fdel(p){ try{ await fetch(FB+p,{method:"DELETE"}) }catch{} }
+
+// ── Screens ──
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"))
+  document.getElementById("screen-"+id).classList.add("active")
+}
+function tab(t){
+  ["algo","zaehler"].forEach(x=>{
+    document.getElementById("screen-"+x).classList.remove("active")
+    document.getElementById("t-"+x).classList.remove("active")
+  })
+  document.getElementById("screen-"+t).classList.add("active")
+  document.getElementById("t-"+t).classList.add("active")
+  if(t==="algo") zeige(0)
+  if(t==="zaehler") upSZ()
+}
+
+// ── Einsätze ──
+async function ladeEinsaetze(){
+  const data = await fget("/einsaetze.json")
+  const sec = document.getElementById("laufende-section")
+  const del = document.getElementById("btn-alles-del")
+  const liste = document.getElementById("laufende-liste")
+
+  if(!data){ sec.style.display="none"; del.style.display="none"; return }
+  const eintr = Object.entries(data).filter(([k,v])=>v&&v.name)
+  if(!eintr.length){ sec.style.display="none"; del.style.display="none"; return }
+
+  sec.style.display="block"; del.style.display="block"
+  liste.innerHTML = eintr.map(([k,e])=>{
+    const abs = e.abschnitte ? Object.values(e.abschnitte) : []
+    const r=abs.reduce((s,a)=>s+(a.rot||0),0), g=abs.reduce((s,a)=>s+(a.gelb||0),0)
+    const gr=abs.reduce((s,a)=>s+(a.gruen||0),0)
+    return `<div class="e-item" onclick="waehlEinsatz('${k}','${e.name.replace(/'/g,"\\'")}')">
+      <span class="ei-n">${e.name}</span>
+      <span class="ei-c"><span class="er">${r}R</span> <span class="eg">${g}G</span> <span class="egr">${gr}Gr</span></span>
+    </div>`
+  }).join("")
+}
+
+async function neuerEinsatz(){
+  const name = document.getElementById("inp-einsatz").value.trim()
+  if(!name){ document.getElementById("inp-einsatz").focus(); return }
+  const k = fkey(name)+"_"+Date.now().toString().slice(-4)
+  await fset("/einsaetze/"+k+".json",{name,ts:new Date().toISOString()})
+  document.getElementById("inp-einsatz").value=""
+  waehlEinsatz(k,name)
+}
+
+async function waehlEinsatz(k,name){
+  einsatzKey=k; einsatzName=name
+  document.getElementById("einsatz-label").textContent="EINSATZ: "+name
+  document.getElementById("subheader").style.display="block"
+  await ladeAbschnitte()
+  show("abschnitt")
+}
+
+async function alleLoeschen(){
+  if(!confirm("Wirklich alle Einsätze löschen?")) return
+  await fdel("/einsaetze.json"); ladeEinsaetze()
+}
+
+function zurueck(){
+  einsatzKey=null; abschnittKey=null; counts={rot:0,gelb:0,gruen:0,schwarz:0}
+  document.getElementById("subheader").style.display="none"
+  document.getElementById("navtabs").style.display="none"
+  document.getElementById("cbar").style.display="none"
+  document.getElementById("fdot").style.display="none"
+  document.getElementById("hinfo").innerHTML=""
+  ladeEinsaetze(); show("einsatz")
+}
+
+// ── Abschnitte ──
+async function ladeAbschnitte(){
+  const data = await fget("/einsaetze/"+einsatzKey+"/abschnitte.json")
+  const liste = document.getElementById("abschnitt-liste")
+  if(!data||!Object.keys(data).length){
+    liste.innerHTML='<div style="color:var(--dim);font-size:13px;text-align:center;padding:12px">Noch kein Abschnitt – unten anlegen</div>'; return
+  }
+  liste.innerHTML = Object.entries(data).map(([k,ab])=>{
+    const ges=(ab.rot||0)+(ab.gelb||0)+(ab.gruen||0)+(ab.schwarz||0)
+    return `<div class="a-item" onclick="waehlAbschnitt('${k}','${(ab.name||k).replace(/'/g,"\\'")}',${ab.rot||0},${ab.gelb||0},${ab.gruen||0},${ab.schwarz||0})">
+      <span class="ai-n">${ab.name||k}</span>
+      <span class="ai-c" style="font-size:13px">
+        <span style="color:#e74c3c">${ab.rot||0}</span>·<span style="color:#f39c12">${ab.gelb||0}</span>·<span style="color:#2ecc71">${ab.gruen||0}</span>·<span style="color:#aaa">${ab.schwarz||0}</span>
+        <span style="color:var(--dim)"> =${ges}</span>
+      </span>
+    </div>`
+  }).join("")
+}
+
+async function neuerAbschnitt(){
+  const name=(document.getElementById("inp-abschnitt").value.trim()||"Abschnitt")
+  const k=fkey(name)
+  await fset("/einsaetze/"+einsatzKey+"/abschnitte/"+k+".json",{name,rot:0,gelb:0,gruen:0,schwarz:0,ts:new Date().toISOString()})
+  document.getElementById("inp-abschnitt").value=""
+  waehlAbschnitt(k,name,0,0,0,0)
+}
+
+function waehlAbschnitt(k,name,r,g,gr,sw){
+  abschnittKey=k; abschnittName=name
+  counts={rot:r,gelb:g,gruen:gr,schwarz:sw}
+  document.getElementById("navtabs").style.display="block"
+  document.getElementById("cbar").style.display="block"
+  document.getElementById("fdot").style.display="block"
+  document.getElementById("hinfo").innerHTML=name
+  upCB(); upSZ(); zeige(0); show("algo")
+  document.querySelectorAll(".ntab").forEach(t=>t.classList.remove("active"))
+  document.getElementById("t-algo").classList.add("active")
+}
+
+async function einsatzDel(){
+  if(!confirm("Diesen Einsatz löschen?")) return
+  await fdel("/einsaetze/"+einsatzKey+".json"); zurueck()
+}
+
+// ── Sync ──
+async function sync(){
+  if(!einsatzKey||!abschnittKey) return
+  const dot=document.getElementById("fdot")
+  try{
+    await fset("/einsaetze/"+einsatzKey+"/abschnitte/"+abschnittKey+".json",
+      {name:abschnittName,...counts,ts:new Date().toISOString()})
+    dot.className="ok"; setTimeout(()=>dot.className="",2000)
+  }catch{ dot.className="err" }
+}
+
+// ── Zählen ──
+function upCB(){
+  ["rot","gelb","gruen","schwarz"].forEach(f=>{
+    document.getElementById("c-"+f).textContent=counts[f]
+  })
+}
+function upSZ(){
+  ["rot","gelb","gruen","schwarz"].forEach(f=>{
+    document.getElementById("sz-"+f).textContent=counts[f]
+  })
+}
+function zs(f){ counts[f]++; upCB(); upSZ(); sync() }
+function undo(f){ if(counts[f]>0){ counts[f]--; upCB(); upSZ(); sync() } }
+function reset0(){
+  if(!confirm("Zähler auf 0?")) return
+  counts={rot:0,gelb:0,gruen:0,schwarz:0}; upCB(); upSZ(); sync()
+}
+function zaehleNeu(f){
+  counts[f]++; upCB(); upSZ(); sync()
+  const b=document.getElementById("cbar"); b.style.transform="translateY(-4px)"; setTimeout(()=>b.style.transform="",200)
+  zeige(0)
+}
+
+// ── Algorithmus ──
+const STEPS=[
+  {q:"Ist der Patient gehfähig?",          h:"Kann die Person selbstständig aufstehen und einige Schritte gehen?",          ja:"gruen",   nein:1},
+  {q:"Liegen tödliche Verletzungen vor?",   h:"Eindeutig nicht mit dem Leben vereinbare Verletzungen.",                       ja:"schwarz", nein:2},
+  {q:"Liegt eine Atemstörung vor?",         h:"Keine Spontanatmung, verlegte Atemwege nicht zu beheben, schwere Atemnot?",   ja:"rot",     nein:3},
+  {q:"Nicht stillbare Blutung?",            h:"Blutung mit direktem Druck oder Tourniquet nicht stillbar?",                   ja:"rot",     nein:4},
+  {q:"Kein Radialispuls tastbar?",          h:"Puls am Handgelenk (Daumenseite) nicht tastbar oder sehr schwach?",           ja:"rot",     nein:5},
+  {q:"Befolgt der Patient einfache Anweisungen?",h:"'Drücken Sie meine Hand' – reagiert der Patient gezielt?",              ja:"gelb",    nein:"rot"}
+]
+const ERG={
+  rot:    {n:"ROT",    sk:"SK I · Sofort",      d:"Lebensbedrohlich verletzt – sofortige Behandlung"},
+  gelb:   {n:"GELB",   sk:"SK II · Dringend",   d:"Schwer verletzt – dringende Behandlung notwendig"},
+  gruen:  {n:"GRÜN",   sk:"SK III · Leicht",    d:"Leicht verletzt – Behandlung kann aufgeschoben werden"},
+  schwarz:{n:"SCHWARZ",sk:"SK IV · Verstorben", d:"Verstorben oder keine Überlebenschance"}
+}
+
+function zeige(i){
+  step=i; const s=STEPS[i]
+  document.getElementById("algo-content").innerHTML=`
+    <div style="font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:10px;text-align:center">Schritt ${i+1} von ${STEPS.length}</div>
+    <div class="step-card">
+      <div class="sq">${s.q}</div>
+      ${s.h?`<div class="sh">${s.h}</div>`:""}
+      <div class="sbtns">
+        <button class="sbtn bja"   onclick="antw(true)">✓ Ja</button>
+        <button class="sbtn bnein" onclick="antw(false)">✗ Nein</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:4px;justify-content:center;margin-top:8px">
+      ${STEPS.map((x,j)=>`<div style="flex:1;max-width:40px;height:4px;border-radius:2px;background:${j<i?"#e74c3c":j===i?"#4895ef":"var(--border)"}"></div>`).join("")}
+    </div>`
+}
+
+function antw(ja){
+  const s=STEPS[step], n=ja?s.ja:s.nein
+  typeof n==="string" ? erg(n) : zeige(n)
+}
+
+function erg(key){
+  const e=ERG[key]
+  document.getElementById("algo-content").innerHTML=`
+    <div class="rc ${key}">
+      <div class="rn">${e.n}</div>
+      <div class="rd">${e.d}</div>
+      <div class="rsk">${e.sk}</div>
+    </div>
+    <button class="bzl ${key}" onclick="zaehleNeu('${key}')">+ Als ${e.n} zählen &amp; nächster Patient</button>
+    <button class="bnu" onclick="zeige(0)">Nochmal ohne Zählen</button>
+    <button class="bnu" onclick="tab('zaehler')">Zur Übersicht</button>`
+}
+
+// ── Init ──
+document.addEventListener("DOMContentLoaded", ladeEinsaetze)
+document.getElementById("inp-einsatz").addEventListener("keydown",   e=>{if(e.key==="Enter") neuerEinsatz()})
+document.getElementById("inp-abschnitt").addEventListener("keydown", e=>{if(e.key==="Enter") neuerAbschnitt()})
+</script>
+</body>
+</html>
