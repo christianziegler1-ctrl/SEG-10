@@ -1,10 +1,49 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SEG-10 Live Dashboard</title>
 <style>
+  :root {
+    --bg:     #f4f6fa;
+    --panel:  #ffffff;
+    --card:   #ffffff;
+    --border: #d0d7e3;
+    --text:   #0f1623;
+    --dim:    #7a8499;
+    --blue:   #1a56db;
+    --rot:    #c0392b;
+    --gelb:   #c47d00;
+    --gruen:  #1a7a52;
+    --shadow: 0 1px 4px rgba(0,0,0,0.10);
+  }
+  [data-theme="dark"] {
+    --bg:     #0d0f14;
+    --panel:  #141720;
+    --card:   #1a1f2e;
+    --border: #2a3048;
+    --text:   #e8ecf4;
+    --dim:    #4a5268;
+    --blue:   #4895ef;
+    --rot:    #e63946;
+    --gelb:   #f4a261;
+    --gruen:  #2ec4b6;
+    --shadow: 0 1px 4px rgba(0,0,0,0.4);
+  }
+  .theme-toggle {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .theme-toggle:hover { border-color: var(--blue); }
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -12,10 +51,11 @@
   body {
     font-family: 'Rajdhani', sans-serif;
     font-weight: 600;
-    background: #0d0f14;
-    color: #e8ecf4;
+    background: var(--bg);
+    color: var(--text);
     min-height: 100vh;
     padding: 12px;
+    transition: background 0.2s, color 0.2s;
   }
 
   header {
@@ -23,7 +63,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 16px;
-    background: #141720;
+    background: var(--panel);
     border-bottom: 3px solid #e63946;
     border-radius: 8px;
     margin-bottom: 12px;
@@ -33,14 +73,14 @@
     font-size: clamp(14px, 3vw, 20px);
     letter-spacing: 3px;
     text-transform: uppercase;
-    color: #e8ecf4;
+    color: var(--text);
   }
 
   #status {
     font-family: 'Share Tech Mono', monospace;
     font-size: 11px;
     letter-spacing: 1px;
-    color: #4a5268;
+    color: var(--dim);
     text-align: right;
   }
 
@@ -79,8 +119,8 @@
   }
 
   .card {
-    background: #1a1f2e;
-    border: 1.5px solid #2a3048;
+    background: var(--card);
+    border: 1.5px solid var(--border);
     border-radius: 8px;
     padding: 12px 14px;
   }
@@ -90,8 +130,8 @@
     font-weight: 700;
     letter-spacing: 3px;
     text-transform: uppercase;
-    color: #4895ef;
-    border-bottom: 1.5px solid #2a3048;
+    color: var(--blue);
+    border-bottom: 1.5px solid var(--border);
     padding-bottom: 6px;
     margin-bottom: 8px;
   }
@@ -111,7 +151,7 @@
     font-family: 'Share Tech Mono', monospace;
     font-size: clamp(14px, 2.8vw, 18px);
     font-weight: 700;
-    color: #e8ecf4;
+    color: var(--text);
   }
 
   .val.big {
@@ -122,7 +162,7 @@
   .sk1 { color: #e63946; font-weight: 700; }
   .sk2 { color: #f4a261; font-weight: 700; }
   .sk3 { color: #2ec4b6; font-weight: 700; }
-  .sk4 { color: #4a5268; }
+  .sk4 { color: var(--dim); }
 
   #timer-display {
     font-family: 'Share Tech Mono', monospace;
@@ -140,7 +180,7 @@
     display: flex;
     justify-content: space-between;
     padding: 6px 10px;
-    background: #141720;
+    background: var(--panel);
     border-radius: 5px;
     font-size: clamp(12px, 2.2vw, 15px);
   }
@@ -154,7 +194,7 @@
   #no-data {
     text-align: center;
     padding: 40px;
-    color: #4a5268;
+    color: var(--dim);
     font-size: 14px;
     letter-spacing: 2px;
   }
@@ -178,6 +218,7 @@
     <div style="font-size:9px;letter-spacing:2px;color:#4a5268;text-transform:uppercase">Berufsrettung Wien · MA 70</div>
     <h1>SEG-10 Live</h1>
   </div>
+  <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="Hell/Dunkel">🌙</button>
   <div id="status">● Verbinde…</div>
 </header>
 
@@ -351,6 +392,28 @@ async function fetchData(){
 // Beim Laden + alle 5 Sekunden aktualisieren
 fetchData()
 setInterval(fetchData, 5000)
+
+function toggleTheme(){
+  const html = document.documentElement
+  const isDark = html.getAttribute("data-theme") === "dark"
+  html.setAttribute("data-theme", isDark ? "light" : "dark")
+  const btn = document.getElementById("themeBtn")
+  if(btn) btn.textContent = isDark ? "🌙" : "☀"
+  try{ localStorage.setItem("theme", isDark ? "light" : "dark") }catch{}
+}
+// Theme beim Laden wiederherstellen
+;(function(){
+  try{
+    const t = localStorage.getItem("theme")
+    if(t === "dark"){
+      document.documentElement.setAttribute("data-theme","dark")
+      document.addEventListener("DOMContentLoaded",()=>{
+        const b=document.getElementById("themeBtn"); if(b) b.textContent="☀"
+      })
+    }
+  }catch{}
+})();
+
 </script>
 </body>
 </html>

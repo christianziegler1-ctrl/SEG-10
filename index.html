@@ -163,6 +163,10 @@
 <button class="exportBtn" onclick="exportEinsatz()">Export / Druck</button>
 <button onclick="startEinsatz()" style="color:var(--accent-green);border-color:rgba(26,122,82,0.4);background:rgba(26,122,82,0.07)">Einsatz starten</button>
 <button onclick="endEinsatz()" style="color:var(--accent-red);border-color:rgba(192,57,43,0.4);background:rgba(192,57,43,0.07)">Einsatz beenden</button>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:2px">
+  <button onclick="einsatzAusDateiLaden()" title="Einsatz aus JSON-Datei laden" style="font-size:11px;padding:6px 4px;color:var(--text-dim);border-color:var(--border);background:transparent;letter-spacing:0.5px">📂 Datei laden</button>
+  <button onclick="einsatzAusFirebaseWiederherstellen()" title="Letzten Stand aus Cloud laden" style="font-size:11px;padding:6px 4px;color:var(--text-dim);border-color:var(--border);background:transparent;letter-spacing:0.5px">☁ Cloud laden</button>
+</div>
 </div>
 
 <div id="timer">00:00:00</div>

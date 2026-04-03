@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vorsichtung Live – Berufsrettung Wien</title>
+<title>Triage Live – Berufsrettung Wien</title>
 <style>
   :root {
     --bg:     #f4f6fa;
@@ -87,18 +87,18 @@ footer { text-align:center; color:#2a3048; font-size:10px; letter-spacing:2px; m
 </head>
 <body>
 <header>
-  <div><p>Berufsrettung Wien · MA 70</p><h1>Vorsichtung Live</h1></div>
+  <div><p>Berufsrettung Wien · MA 70</p><h1>Triage Live</h1></div>
   <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="Hell/Dunkel">🌙</button>
   <div id="status">● Verbinde…</div>
 </header>
 <div id="einsatz-filter">
-  <div class="ef-label">Einsatz auswählen:</div>
+  <div class="ef-label">Triage auswählen:</div>
   <div id="ef-buttons"></div>
 </div>
-<div id="no-data">Warte auf Vorsichtungs-Daten…</div>
+<div id="no-data">Warte auf Triage-Daten…</div>
 <div id="main">
   <div class="gesamt-card">
-    <div class="gl" id="gl">Gesamt gesichtet</div>
+    <div class="gl" id="gl">Gesamt triagiert</div>
     <div class="gn" id="d-gesamt">0</div>
   </div>
   <div class="farb-grid">
@@ -108,7 +108,7 @@ footer { text-align:center; color:#2a3048; font-size:10px; letter-spacing:2px; m
     <div class="fc schwarz"><div class="fn">Schwarz</div><div class="fz" id="d-schwarz">0</div><div class="fsk">SK IV · Verstorben</div></div>
   </div>
   <div class="abschnitte-card" id="abschnitte-card">
-    <div class="at">Abschnitte</div>
+    <div class="at">Triage-Teams</div>
     <div id="abschnitte-list"></div>
   </div>
 </div>
@@ -152,7 +152,7 @@ function render(){
 
   document.getElementById("no-data").style.display="none"
   document.getElementById("main").style.display="block"
-  document.getElementById("gl").textContent = aktiverEinsatz&&gefiltert.length ? "Gesamt – "+gefiltert[0][1].name : "Gesamt gesichtet"
+  document.getElementById("gl").textContent = aktiverEinsatz&&gefiltert.length ? "Triage – "+gefiltert[0][1].name : "Gesamt triagiert"
   document.getElementById("d-gesamt").textContent=r+g+gr+sw
   document.getElementById("d-rot").textContent=r
   document.getElementById("d-gelb").textContent=g
@@ -170,7 +170,7 @@ function render(){
 
 async function fetchData(){
   try {
-    const res=await fetch(FB+"/einsaetze.json?t="+Date.now())
+    const res=await fetch(FB+"/triage-einsaetze.json?t="+Date.now())
     if(!res.ok) throw new Error()
     const data=await res.json()
     if(!data){ statusEl.textContent="● Warte…"; statusEl.className="offline"; return }
