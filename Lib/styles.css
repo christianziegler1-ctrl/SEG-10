@@ -1352,8 +1352,18 @@ header {
   margin-top: clamp(6px,0.6vw,10px);
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: clamp(6px,0.6vw,10px);
+  gap: clamp(5px,0.5vw,8px);
   align-items: start;
+}
+/* Abschnitte kompakter damit sie auf den Bildschirm passen */
+.abschnitt {
+  font-size: clamp(10px,0.75vw,13px) !important;
+}
+.abschnitt .drop {
+  min-height: clamp(40px,4vh,70px);
+}
+.abschnitt .adressfeld {
+  display: none;
 }
 .abschnittHeader {
   display: block;

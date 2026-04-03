@@ -1,6 +1,5 @@
 /* =========================================================
-   EINSATZBOARD – APP.JS  v9
-   + Remote Control via Firebase SSE (Echtzeit, kein Polling)
+   EINSATZBOARD – APP.JS  v8
 ========================================================= */
 
 let dragged = null
@@ -41,8 +40,8 @@ document.addEventListener("DOMContentLoaded", () => {
   updatePatients()
   initReloadProtection()
   renderShortcutList()
+  // Beim Start prüfen ob laufender Einsatz in Firebase vorhanden
   pruefeFirebaseBackup()
-  initRemoteControl()   // ← Remote Control starten
 })
 
 async function pruefeFirebaseBackup(){
@@ -53,11 +52,13 @@ async function pruefeFirebaseBackup(){
     const data = await res.json()
     if(!data || !data.html || !data.timestamp) return
 
+    // Nur anzeigen wenn Einsatz aus den letzten 24 Stunden
     const alter = Date.now() - new Date(data.timestamp).getTime()
     if(alter > 24 * 60 * 60 * 1000) return
 
     const ts = new Date(data.timestamp).toLocaleString("de-AT")
 
+    // Dezentes Popup unten links
     const popup = document.createElement("div")
     popup.id = "restorePopup"
     popup.style.cssText = [
@@ -81,6 +82,7 @@ async function pruefeFirebaseBackup(){
       </div>
     `
     document.body.appendChild(popup)
+    // Automatisch nach 20 Sekunden ausblenden
     setTimeout(() => popup.remove(), 20000)
   } catch(e) {}
 }
@@ -162,7 +164,7 @@ function createFuehrungskraft(typ){
     logEvent("Fuehrungskraft erstellt: " + fk.dataset.fkName)
     document.getElementById("zufahrt").appendChild(fk)
     saveState()
-  }, true)
+  }, true) // optional = true
 }
 
 /* EIGENES NAME-POPUP statt prompt() – verhindert Vollbild-Abbruch */
@@ -240,7 +242,7 @@ function createVehicle(type){
     logEvent("Fahrzeug erstellt: " + type + " " + name)
     updatePatients()
     saveState()
-  }, false)
+  }, false) // optional = false, Eingabe pflicht
 }
 
 /* SEG BUTTONS */
@@ -290,6 +292,7 @@ function createAbschnitt(){
   ab.innerHTML =
     '<div class="deleteHP">X</div>' +
     '<div class="abschnittHeader"><input class="abschnittName" value="Abschnitt ' + abschnittCount + '" placeholder="Abschnitt benennen\u2026"></div>' +
+    '<div class="patients" data-unit="ABSCHNITT' + abschnittCount + '">0</div>' +
     '<input class="adressfeld" placeholder="Adresse / Standort\u2026">' +
     '<div class="drop"></div>'
   ab.querySelector(".deleteHP").onclick = (e) => {
@@ -562,6 +565,7 @@ function updateDashboard(){
   const nah=document.querySelectorAll(".vehicle.NAH").length
   const totalVehicles=document.querySelectorAll(".vehicle").length
 
+  // Alarmstufe Banner – nutzt das fest im HTML verankerte Element
   const banner = document.getElementById("alarmBanner")
   if(banner){
     if(aktiveAlarmstufe !== null && alarmstufen[aktiveAlarmstufe]){
@@ -608,12 +612,15 @@ function updateDashboard(){
 
 /* =========================================================
    FIREBASE LIVE-SYNC
+   Schreibt bei jeder Änderung die Dashboard-Daten ins Firebase.
+   FIREBASE_CONFIG wird vom Benutzer einmalig eingetragen.
 ========================================================= */
 
+// Diese Zeile einmalig mit deinen Firebase-Daten befüllen (siehe Anleitung)
 const FIREBASE_URL = "https://seg-10-dashboard-default-rtdb.europe-west1.firebasedatabase.app"
 
 function syncToFirebase(){
-  if(!FIREBASE_URL) return
+  if(!FIREBASE_URL) return // Kein Firebase konfiguriert
 
   const rtw  = document.querySelectorAll(".vehicle.RTW").length
   const ktw  = document.querySelectorAll(".vehicle.KTW").length
@@ -624,6 +631,7 @@ function syncToFirebase(){
 
   function pu(unit){ const el=document.querySelector('[data-unit="'+unit+'"]'); return el?(parseInt(el.innerText)||0):0 }
 
+  // Bereiche sammeln
   const bereiche = []
   document.querySelectorAll("#halteplaetze .bereich").forEach(hp=>{
     bereiche.push({ name: hp.querySelector(".bheader")?.innerText||"HP", fzg: hp.querySelectorAll(".vehicle").length })
@@ -658,7 +666,7 @@ function syncToFirebase(){
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
-  }).catch(()=>{})
+  }).catch(()=>{}) // Fehler still ignorieren – kein Popup
 }
 
 /* SAVE */
@@ -666,13 +674,15 @@ function saveState(){
   if(!einsatzAktiv||!einsatzDateiHandle) return
   let data={
     timestamp: new Date().toISOString(),
-    einsatzStartZeit: einsatzStartZeit,
+    einsatzStartZeit: einsatzStartZeit, // Timer-Startzeit mitspeichern
     log: eventLog,
+    tagebuch: tagebuch,
     theme: document.documentElement.getAttribute("data-theme")||"light",
     sichtungCounts
   }
   saveAlarmstufen(); data.alarmstufen=alarmstufen; data.html=document.body.innerHTML
   writeFile(data)
+  // Backup in Firebase – inkl. HTML und Startzeit
   if(FIREBASE_URL){
     fetch(FIREBASE_URL + "/backup.json", {
       method:"PUT",
@@ -713,6 +723,7 @@ function endEinsatz(){
    EINSATZ WIEDERHERSTELLEN
 ========================================================= */
 
+// Option 1: Aus lokaler JSON-Datei
 async function einsatzAusDateiLaden(){
   try {
     const [fh] = await window.showOpenFilePicker({
@@ -729,71 +740,87 @@ async function einsatzAusDateiLaden(){
 
     if(!confirm("Einsatz aus Datei wiederherstellen?\nAktuelle Ansicht wird überschrieben.")) return
 
+    // HTML wiederherstellen
     document.body.innerHTML = data.html
 
+    // State wiederherstellen
     if(data.sichtungCounts) sichtungCounts = data.sichtungCounts
     if(data.alarmstufen)    alarmstufen    = data.alarmstufen
     if(data.log)            eventLog       = data.log
+    if(data.tagebuch)       { tagebuch = data.tagebuch; const el=document.getElementById("tagebuchLetzter"); if(el&&tagebuch.length) el.textContent=tagebuch[tagebuch.length-1] }
     if(data.theme)          document.documentElement.setAttribute("data-theme", data.theme)
 
-    einsatzDateiHandle = fh
+    // Speicherdatei – neuen Handle anlegen (alte Datei kann nicht direkt wiederverwendet werden)
+    const neuFh = await window.showSaveFilePicker({
+      suggestedName: fh.name,
+      types:[{description:"JSON",accept:{"application/json":[".json"]}}]
+    })
+    einsatzDateiHandle = neuFh
     einsatzAktiv = true
 
-    if(data.einsatzStartZeit){
-      einsatzStartZeit = new Date(data.einsatzStartZeit)
-      startTimer()
-    }
-
+    // Neu initialisieren
+    initDrag(); initSEG(); initPatients(); initShortcuts()
+    updatePatients(); updateDashboard()
+    startTimer(data.einsatzStartZeit || null)
     autosaveTimer = setInterval(()=>saveState(), 30000)
-
-    initDrag(); initSEG(); initEnter(); initPatients(); initShortcuts()
-    updatePatients(); initReloadProtection()
 
     logEvent("Einsatz aus Datei wiederhergestellt")
     saveState()
+
   } catch(err){
     if(err.name !== "AbortError") alert("Fehler beim Laden: " + err.message)
   }
 }
 
+// Option 2: Aus Firebase (letzter gespeicherter Stand)
 async function einsatzAusFirebaseWiederherstellen(){
-  if(!FIREBASE_URL) return
+  if(!FIREBASE_URL){
+    alert("Keine Firebase URL konfiguriert.")
+    return
+  }
   try {
     const res = await fetch(FIREBASE_URL + "/backup.json?t=" + Date.now())
-    if(!res.ok) throw new Error("Firebase nicht erreichbar")
+    if(!res.ok) throw new Error("Keine Verbindung")
     const data = await res.json()
-    if(!data || !data.html) throw new Error("Keine Backup-Daten")
 
-    if(!confirm("Einsatz aus Firebase wiederherstellen?\nAktuelle Ansicht wird überschrieben.")) return
+    if(!data || !data.html){
+      alert("Kein Backup in Firebase gefunden.")
+      return
+    }
+
+    const ts = data.timestamp ? new Date(data.timestamp).toLocaleString("de-AT") : "unbekannt"
+    if(!confirm("Letzter Stand: " + ts + "\nEinsatz aus Firebase wiederherstellen?")) return
 
     document.body.innerHTML = data.html
-
     if(data.sichtungCounts) sichtungCounts = data.sichtungCounts
     if(data.alarmstufen)    alarmstufen    = data.alarmstufen
     if(data.log)            eventLog       = data.log
     if(data.theme)          document.documentElement.setAttribute("data-theme", data.theme)
 
+    // Neues lokales Speicherziel wählen
+    const fh = await window.showSaveFilePicker({
+      suggestedName: "einsatz_wiederhergestellt_" + new Date().toISOString().slice(0,10) + ".json",
+      types:[{description:"JSON",accept:{"application/json":[".json"]}}]
+    })
+    einsatzDateiHandle = fh
     einsatzAktiv = true
 
-    if(data.einsatzStartZeit){
-      einsatzStartZeit = new Date(data.einsatzStartZeit)
-      startTimer()
-    }
-
+    initDrag(); initSEG(); initPatients(); initShortcuts()
+    updatePatients(); updateDashboard()
+    startTimer(data.einsatzStartZeit || null)
     autosaveTimer = setInterval(()=>saveState(), 30000)
 
-    initDrag(); initSEG(); initEnter(); initPatients(); initShortcuts()
-    updatePatients(); initReloadProtection()
-
     logEvent("Einsatz aus Firebase wiederhergestellt")
+    saveState()
+
   } catch(err){
-    alert("Fehler beim Wiederherstellen: " + err.message)
+    if(err.name !== "AbortError") alert("Fehler: " + err.message)
   }
 }
-
-/* TIMER */
 function startTimer(startZeit){
-  if(!einsatzStartZeit) einsatzStartZeit = startZeit || Date.now()
+  if(timerInterval) clearInterval(timerInterval)
+  // Wenn startZeit übergeben wird (Wiederherstellung) – dort weiterlaufen
+  einsatzStartZeit = startZeit || Date.now()
   timerInterval=setInterval(()=>{
     let diff=Date.now()-einsatzStartZeit
     let h=Math.floor(diff/3600000),m=Math.floor(diff/60000)%60,s=Math.floor(diff/1000)%60
@@ -803,20 +830,7 @@ function startTimer(startZeit){
 }
 function stopTimer(){ clearInterval(timerInterval); timerInterval=null }
 
-/* LOG */
-function logEvent(text){ eventLog.push(new Date().toLocaleTimeString()+" | "+text) }
-
-/* THEME */
-function toggleTheme(){
-  const html=document.documentElement
-  const isLight=html.getAttribute("data-theme")==="light"
-  html.setAttribute("data-theme",isLight?"dark":"light")
-  const btn=document.getElementById("themeBtn")
-  if(btn) btn.textContent=isLight?"\u2600":"\uD83C\uDF19"
-  saveState()
-}
-
-/* RELOAD-SCHUTZ */
+/* RELOAD SCHUTZ */
 function initReloadProtection(){
   window.addEventListener("keydown",function(e){
     const isF5=e.key==="F5", isCtrlR=(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="r"
@@ -830,16 +844,74 @@ function initReloadProtection(){
   window.addEventListener("beforeunload",function(e){ e.preventDefault(); e.returnValue="Seite verlassen?" })
 }
 
-/* SICHTUNG UI */
-function setSichtung(sk){
-  currentSichtung = sk
-  document.querySelectorAll(".sichtungBtn").forEach(b=>{
-    b.classList.toggle("active", b.dataset.sk === sk)
+function logEvent(text){ eventLog.push(new Date().toLocaleTimeString()+" | "+text) }
+
+/* =========================================================
+   EINSATZTAGEBUCH
+========================================================= */
+let tagebuch = []
+
+function tagebuchSenden(){
+  const inp = document.getElementById("tagebuchInput")
+  const text = inp?.value?.trim()
+  if(!text) return
+
+  const time = new Date().toLocaleTimeString()
+  const eintrag = time + "  |  " + text
+
+  tagebuch.push(eintrag)
+
+  const el = document.getElementById("tagebuchLetzter")
+  if(el) el.textContent = eintrag
+
+  inp.value = ""
+  logEvent("Tagebuch: " + text)
+  saveState()
+}
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  document.getElementById("tagebuchInput")?.addEventListener("keydown", e=>{
+    if(e.key === "Enter"){ e.preventDefault(); tagebuchSenden() }
   })
+})
+
+/* THEME */
+function toggleTheme(){
+  const html=document.documentElement
+  const isLight=html.getAttribute("data-theme")==="light"
+  html.setAttribute("data-theme",isLight?"dark":"light")
+  const btn=document.getElementById("themeBtn")
+  if(btn) btn.textContent=isLight?"\u2600":"\uD83C\uDF19"
+  saveState()
+}
+
+/* SICHTUNG */
+function setSichtung(cat){
+  currentSichtung=(currentSichtung===cat)?null:cat
+  document.querySelectorAll(".sichtBtn").forEach(b=>b.classList.remove("selected"))
+  const label=document.getElementById("sichtungLabel")
+  if(currentSichtung){
+    const btn=document.querySelector(".sichtBtn."+cat.toLowerCase())
+    if(btn) btn.classList.add("selected")
+    label.textContent=cat; label.className="sichtungLabel "+cat
+  }else{ label.textContent="\u2013"; label.className="sichtungLabel" }
 }
 function resetSichtungUI(){
-  currentSichtung = null
-  document.querySelectorAll(".sichtungBtn").forEach(b=>b.classList.remove("active"))
+  currentSichtung=null
+  document.querySelectorAll(".sichtBtn").forEach(b=>b.classList.remove("selected"))
+  const label=document.getElementById("sichtungLabel")
+  if(label){ label.textContent="\u2013"; label.className="sichtungLabel" }
+}
+function sichtungSetzen(){
+  if(!currentSichtung){ alert("Bitte zuerst eine Sichtungskategorie auswaehlen."); return }
+  if(!currentPatientBox){ closePopup(); return }
+  const inputAmount=parseInt(document.getElementById("patientInput").value)
+  const bestand=parseInt(currentPatientBox.innerText)||0
+  const zuweisung=(!isNaN(inputAmount)&&inputAmount>0)?Math.min(inputAmount,bestand):bestand
+  if(zuweisung<=0){ alert("Keine Patienten vorhanden."); return }
+  sichtungCounts[currentSichtung]=(sichtungCounts[currentSichtung]||0)+zuweisung
+  logEvent("Sichtung zugewiesen: "+zuweisung+" Pat. -> "+currentSichtung)
+  updatePatients(); closePopup(); saveState()
 }
 
 /* ALARMSTUFEN – fix 5 Stufen, vorbelegt aus GSM-DFB */
@@ -847,40 +919,28 @@ if(alarmstufen.length < 5){
   alarmstufen = [
     {
       titel: "A1 – Kleinlage",
-      text: "RESSOURCEN:\n• SEG-3 (ersatzweise SEG-1)\n• SEG-10\n• SEG-21 oder SEG-22\n• 2× RTW\n\nFUNKKANAL: BRW-KAT-1\n\nEINSATZTAKTIK: Ein RTW als Bergebereitschaft/PSS, zweiter RTW im SEG-Bus. Gehähige Patienten primär im SEG-Bus. SEG-10 als Führungsunterstützung.\n\nAUSRUFUNG gemäß AO oder durch EL-RD auch auf Anfahrt."
+      text: "RESSOURCEN:\n\u2022 SEG-3 (ersatzweise SEG-1)\n\u2022 SEG-10\n\u2022 SEG-21 oder SEG-22\n\u2022 2\u00d7 RTW\n\nFUNKKANAL: BRW-KAT-1\n\nEINSATZTAKTIK: Ein RTW als Bergebereitschaft/PSS, zweiter RTW im SEG-Bus. Geh\u00e4hige Patienten prim\u00e4r im SEG-Bus. SEG-10 als F\u00fchrungsunterst\u00fctzung.\n\nAUSRUFUNG gem\u00e4\u00df AO oder durch EL-RD auch auf Anfahrt."
     },
     {
       titel: "A2 – Mittellage",
-      text: "RESSOURCEN:\n• SEG-1 (ersatzweise SEG-3), SEG-10\n• SEG-21 oder SEG-22, SEG-EVAK\n• MLS-Wien, ZTR-OA, SAN-Team HIO\n• 2× RTW, 2× N-KTW, 1× NEF\n\nFUNKKANAL: BRW-KAT-1\n\nMASSNAHMEN:\n✓ Großschadensprotokoll im Berufsrettungsportal\n✓ Vorverständigung WIGEV Journaldienst\n✓ Alarmierung SAN-Team HIO\n\nEINSATZABSCHNITTE:\n1. Intervention (ZGKDT)\n2. Behandlung (erfahrene Führungskraft)\n3. Transport (MLS Wien / QM Leitstelle)"
+      text: "RESSOURCEN:\n\u2022 SEG-1 (ersatzweise SEG-3), SEG-10\n\u2022 SEG-21 oder SEG-22, SEG-EVAK\n\u2022 MLS-Wien, ZTR-OA, SAN-Team HIO\n\u2022 2\u00d7 RTW, 2\u00d7 N-KTW, 1\u00d7 NEF\n\nFUNKKANAL: BRW-KAT-1\n\nMASSNAHMEN:\n\u2713 Gro\u00dfschadensprotokoll im Berufsrettungsportal\n\u2713 Vorverst\u00e4ndigung WIGEV Journaldienst\n\u2713 Alarmierung SAN-Team HIO\n\nEINSATZABSCHNITTE:\n1. Intervention (ZGKDT)\n2. Behandlung (erfahrene F\u00fchrungskraft)\n3. Transport (MLS Wien / QM Leitstelle)"
     },
     {
-      titel: "A3 – Großlage / MANV",
-      text: "RESSOURCEN: SEG-1, SEG-3, SEG-10, SEG-21+22, SEG-EVAK, SEG-11+12, MLS-Wien, ZTR-OA, mind. 1× FISU + RTW/N-KTW/NEF je MANV\n\nBHP-KAPAZITÄTEN:\n• SEG-21/22: je 25 Plätze (15× SK3, 10× SK1/SK2)\n• SEG-11/12: je 10 Plätze (SK1/SK2)\n\nMANV-STICHWORT (SK1+SK2):\nMANV-10: 5 RTW/NKTW, 2 NEF\nMANV-20: 9 RTW/NKTW, 3 NEF\nMANV-30: 13 RTW/NKTW, 4 NEF\nMANV-40: 17 RTW/NKTW, 5 NEF\nMANV-50: 21 RTW/NKTW, 6 NEF\nMANV-60: 25 RTW/NKTW, 7 NEF\n\nMASSNAHMEN: Großschadensprotokoll, Bettenabsprache SOP LS-33, Info Kommando MA70+MD-OS, Anforderung Transportressourcen SAN-Team HIO"
+      titel: "A3 – Gro\u00dflage / MANV",
+      text: "RESSOURCEN: SEG-1, SEG-3, SEG-10, SEG-21+22, SEG-EVAK, SEG-11+12, MLS-Wien, ZTR-OA, mind. 1\u00d7 FISU + RTW/N-KTW/NEF je MANV\n\nBHP-KAPAZIT\u00c4TEN:\n\u2022 SEG-21/22: je 25 Pl\u00e4tze (15\u00d7 SK3, 10\u00d7 SK1/SK2)\n\u2022 SEG-11/12: je 10 Pl\u00e4tze (SK1/SK2)\n\nMANV-STICHWORT (SK1+SK2):\nMANV-10: 5 RTW/NKTW, 2 NEF\nMANV-20: 9 RTW/NKTW, 3 NEF\nMANV-30: 13 RTW/NKTW, 4 NEF\nMANV-40: 17 RTW/NKTW, 5 NEF\nMANV-50: 21 RTW/NKTW, 6 NEF\nMANV-60: 25 RTW/NKTW, 7 NEF\n\nMASSNAHMEN: Gro\u00dfschadensprotokoll, Bettenabsprache SOP LS-33, Info Kommando MA70+MD-OS, Anforderung Transportressourcen SAN-Team HIO"
     },
     {
-      titel: "A4 – Übergroßlage",
-      text: "AKTIVIERUNG wenn MA70-Behandlungskapazitäten nicht ausreichen.\n\nZUSÄTZLICHE BHP:\n• BF Wien AB Ergänzungsmaterial (2× MT-40, Wache Leopoldstadt)\n• Bis zu 5× BHP 25 privater Rettungsorg. (je in 30-Min-Intervallen)\n\nMANV-STICHWORT A4:\nMANV-70: 29 RTW/NKTW, 8 NEF\nMANV-80: 33 RTW/NKTW, 9 NEF\nMANV-90: 37 RTW/NKTW, 10 NEF\nMANV-100: 41 RTW/NKTW, 11 NEF\nMANV-110: 45 RTW/NKTW, 12 NEF\n\nMASSNAHMEN: KTD auf Minimum, Ressourcen anderer Bundesländer, Nachbesetzung alle MA70-Ressourcen, Einberufung Einsatzstab MA70"
+      titel: "A4 – \u00dcbergro\u00dflage",
+      text: "AKTIVIERUNG wenn MA70-Behandlungskapazit\u00e4ten nicht ausreichen.\n\nZUS\u00c4TZLICHE BHP:\n\u2022 BF Wien AB Erg\u00e4nzungsmaterial (2\u00d7 MT-40, Wache Leopoldstadt)\n\u2022 Bis zu 5\u00d7 BHP 25 privater Rettungsorg. (je in 30-Min-Intervallen)\n\nMANV-STICHWORT A4:\nMANV-70: 29 RTW/NKTW, 8 NEF\nMANV-80: 33 RTW/NKTW, 9 NEF\nMANV-90: 37 RTW/NKTW, 10 NEF\nMANV-100: 41 RTW/NKTW, 11 NEF\nMANV-110: 45 RTW/NKTW, 12 NEF\n\nMASSNAHMEN: KTD auf Minimum, Ressourcen anderer Bundesl\u00e4nder, Nachbesetzung alle MA70-Ressourcen, Einberufung Einsatzstab MA70"
     },
     {
       titel: "A5 – Sonderlage / Dauerlage",
-      text: "AKTIVIERUNG: Nur durch RDL oder Stellvertreter.\nFür Einsätze > 24h oder Sonderlagen mit erweiterter Führungsstruktur.\n\nBESONDERHEITEN:\n• Einsatzführung aus dem Einsatzstab MA70 (nicht von vorne)\n• Gesamteinsatzleitung: RDL oder Beauftragter\n• Voller Zugriff auf alle Hilfseinheiten privater Org.\n• Maßnahmen individuell zugeschnitten + dokumentieren\n\nKOMMUNIKATION:\nBRW-KAT-1 (bzw. KAT-2 bei Paralleleinsatz)\nSonderlagen SEG-Disponent: BRW-KAT-3"
+      text: "AKTIVIERUNG: Nur durch RDL oder Stellvertreter.\nF\u00fcr Eins\u00e4tze > 24h oder Sonderlagen mit erweiterter F\u00fchrungsstruktur.\n\nBESONDERHEITEN:\n\u2022 Einsatzf\u00fchrung aus dem Einsatzstab MA70 (nicht von vorne)\n\u2022 Gesamteinsatzleitung: RDL oder Beauftragter\n\u2022 Voller Zugriff auf alle Hilfseinheiten privater Org.\n\u2022 Ma\u00dfnahmen individuell zugeschnitten + dokumentieren\n\nKOMMUNIKATION:\nBRW-KAT-1 (bzw. KAT-2 bei Paralleleinsatz)\nSonderlagen SEG-Disponent: BRW-KAT-3"
     }
   ]
 }
 
-function initAlarmstufen(){
-  // Bereits oben beim Laden befüllt – diese Funktion stellt nur sicher
-  // dass beim ersten Öffnen des Popups nichts leer ist
-  if(alarmstufen.length < 5) {
-    // Fallback falls Array irgendwie kleiner geworden ist
-    while(alarmstufen.length < 5){
-      alarmstufen.push({ titel: "Alarmstufe " + (alarmstufen.length + 1), text: "" })
-    }
-  }
-}
-
 function openAlarmstufen(){
-  initAlarmstufen()
   saveAlarmstufen()
   renderAlarmstufen()
   switchAlarmTab("info")
@@ -1000,14 +1060,22 @@ function exportEinsatz(){
   logEvent("Einsatz exportiert")
 }
 
-/* SHORTCUTS */
+/* SHORTCUTS
+   Ctrl+Shift+1-5: Fahrzeuge (Ziffern = keine Browser-Konflikte)
+   Ctrl+Shift+6: Einsatz starten (Ziffer = kein AltGr-Problem)
+   Ctrl+Alt+Buchstabe: restliche Aktionen (e.code = layout-unabhaengig)
+   Fahrzeug-Menue offen: Tasten 1-5
+*/
 const SHORTCUTS=[
+  // Fahrzeuge: Ctrl+Shift+Ziffer (konfliktfrei)
   {keys:"Ctrl+Shift+1", code:"Digit1", label:"RTW erstellen",             action:()=>createVehicle("RTW"),  cs:true},
   {keys:"Ctrl+Shift+2", code:"Digit2", label:"KTW erstellen",             action:()=>createVehicle("KTW"),  cs:true},
   {keys:"Ctrl+Shift+3", code:"Digit3", label:"NEF erstellen",             action:()=>createVehicle("NEF"),  cs:true},
   {keys:"Ctrl+Shift+4", code:"Digit4", label:"FISU erstellen",            action:()=>createVehicle("FISU"), cs:true},
   {keys:"Ctrl+Shift+5", code:"Digit5", label:"NAH erstellen",             action:()=>createVehicle("NAH"),  cs:true},
+  // Einsatz starten: Ctrl+Shift+6 (Ziffer = kein AltGr)
   {keys:"Ctrl+Shift+6", code:"Digit6", label:"Einsatz starten",           action:()=>startEinsatz(),        cs:true},
+  // Restliche: Ctrl+Alt+Buchstabe (e.code layout-unabhaengig)
   {keys:"Ctrl+Alt+E",   code:"KeyE",   label:"Einsatz beenden",           action:()=>endEinsatz()},
   {keys:"Ctrl+Alt+F",   code:"KeyF",   label:"Vollbild an/aus",           action:()=>toggleFullscreen()},
   {keys:"Ctrl+Alt+D",   code:"KeyD",   label:"Dark Mode an/aus",          action:()=>toggleTheme()},
@@ -1025,13 +1093,17 @@ const SHORTCUTS=[
 
 function initShortcuts(){
   window.addEventListener("keydown", function(e){
+
     if(e.key==="Escape"){
       closePopup()
       document.getElementById("alarmPopup").style.display="none"
       const ov=document.getElementById("shortcutOverlay"); if(ov) ov.style.display="none"
       return
     }
+
     const isInput = ["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)
+
+    // Fahrzeug-Popup offen: Tasten 1-5
     if(vehicleHotkeysActive && !e.ctrlKey && !e.altKey && !e.shiftKey){
       if(e.code==="Digit1"){ e.preventDefault(); createVehicle("RTW"); return }
       if(e.code==="Digit2"){ e.preventDefault(); createVehicle("KTW"); return }
@@ -1039,6 +1111,8 @@ function initShortcuts(){
       if(e.code==="Digit4"){ e.preventDefault(); createVehicle("FISU"); return }
       if(e.code==="Digit5"){ e.preventDefault(); createVehicle("NAH"); return }
     }
+
+    // Ctrl+Shift+Ziffer (Fahrzeuge + Einsatz starten)
     if(e.ctrlKey && e.shiftKey && !e.altKey){
       const sc = SHORTCUTS.find(s => s.cs && s.code === e.code)
       if(sc){
@@ -1047,6 +1121,8 @@ function initShortcuts(){
         return
       }
     }
+
+    // Ctrl+Alt+Buchstabe – e.code ist layout-unabhaengig
     if(e.ctrlKey && e.altKey && !e.shiftKey){
       const sc = SHORTCUTS.find(s => !s.cs && s.code === e.code)
       if(sc){
@@ -1054,105 +1130,11 @@ function initShortcuts(){
         e.preventDefault(); e.stopImmediatePropagation(); sc.action(); return
       }
     }
+
   }, true)
 }
 
 function renderShortcutList(){
   const el=document.getElementById("shortcutList"); if(!el) return
   el.innerHTML=SHORTCUTS.map(sc=>`<div style="display:flex;justify-content:space-between;gap:20px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--accent-blue);font-family:'Share Tech Mono',monospace;font-size:11px">${sc.keys}</span><span>${sc.label}</span></div>`).join("")
-}
-
-
-/* =========================================================
-   REMOTE CONTROL via Firebase SSE
-   iPad schreibt Command → Firebase feuert sofort Event
-   → Laptop empfängt in <200ms und führt aus
-========================================================= */
-
-let _remoteSSE = null
-let _lastRemoteCmdId = null
-let _remoteRetryTimer = null
-
-function initRemoteControl() {
-  if(!FIREBASE_URL) return
-  if(typeof EventSource === "undefined") {
-    console.warn("[Remote] EventSource nicht unterstützt – kein Remote Control")
-    return
-  }
-  connectRemoteSSE()
-}
-
-function connectRemoteSSE() {
-  // Vorherige Verbindung sauber schließen
-  if(_remoteSSE) { _remoteSSE.close(); _remoteSSE = null }
-
-  // Firebase Realtime Database SSE-Stream auf /remote/cmd
-  _remoteSSE = new EventSource(FIREBASE_URL + "/remote/cmd.json?accept=text/event-stream")
-
-  _remoteSSE.addEventListener("put", (e) => {
-    try {
-      const msg = JSON.parse(e.data)
-      const cmd = msg.data
-      // Kein Command, schon erledigt, oder bereits verarbeitet
-      if(!cmd || cmd.done || !cmd.action) return
-      if(cmd.id === _lastRemoteCmdId) return
-      _lastRemoteCmdId = cmd.id
-
-      console.log("[Remote] ⚡ Command:", cmd.action, cmd.param || "")
-
-      // Als erledigt in Firebase markieren (verhindert Re-Ausführung)
-      fetch(FIREBASE_URL + "/remote/cmd/done.json", {
-        method: "PUT",
-        headers: {"Content-Type":"application/json"},
-        body: "true"
-      }).catch(()=>{})
-
-      executeRemoteCmd(cmd.action, cmd.param)
-    } catch(err) {}
-  })
-
-  _remoteSSE.addEventListener("patch", (e) => {
-    // Auch patch-Events auswerten (Firebase sendet manchmal patch statt put)
-    try {
-      const msg = JSON.parse(e.data)
-      const cmd = msg.data
-      if(!cmd || cmd.done || !cmd.action) return
-      if(cmd.id === _lastRemoteCmdId) return
-      _lastRemoteCmdId = cmd.id
-      fetch(FIREBASE_URL + "/remote/cmd/done.json", {
-        method: "PUT", headers: {"Content-Type":"application/json"}, body: "true"
-      }).catch(()=>{})
-      executeRemoteCmd(cmd.action, cmd.param)
-    } catch(err) {}
-  })
-
-  _remoteSSE.onerror = () => {
-    console.warn("[Remote] SSE Verbindung unterbrochen – Neuversuch in 5s")
-    _remoteSSE.close()
-    _remoteSSE = null
-    clearTimeout(_remoteRetryTimer)
-    _remoteRetryTimer = setTimeout(connectRemoteSSE, 5000)
-  }
-
-  console.log("[Remote] SSE-Listener aktiv – wartet auf iPad-Commands")
-}
-
-function executeRemoteCmd(action, param) {
-  switch(action) {
-    case "createVehicle":          if(param) createVehicle(param); break
-    case "createHalteplatz":       createHalteplatz(); break
-    case "createAbschnitt":        createAbschnitt(); break
-    case "createVorsichtung":      createVorsichtung(); break
-    case "createPSS":              createPSS(); break
-    case "createBER":              createBER(); break
-    case "startEinsatz":           startEinsatz(); break
-    case "endEinsatz":             endEinsatz(); break
-    case "openAlarmstufen":        openAlarmstufen(); break
-    case "openPatientMenu":        openPatientMenu(); break
-    case "openVehicleMenu":        openVehicleMenu(); break
-    case "openFuehrungskraftMenu": openFuehrungskraftMenu(); break
-    case "exportEinsatz":          exportEinsatz(); break
-    case "toggleTheme":            toggleTheme(); break
-    default: console.warn("[Remote] Unbekannter Command:", action)
-  }
 }
