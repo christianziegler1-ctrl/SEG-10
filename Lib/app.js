@@ -40,7 +40,52 @@ document.addEventListener("DOMContentLoaded", () => {
   updatePatients()
   initReloadProtection()
   renderShortcutList()
+  // Beim Start prüfen ob laufender Einsatz in Firebase vorhanden
+  pruefeFirebaseBackup()
 })
+
+async function pruefeFirebaseBackup(){
+  if(!FIREBASE_URL) return
+  try {
+    const res = await fetch(FIREBASE_URL + "/backup.json?t=" + Date.now())
+    if(!res.ok) return
+    const data = await res.json()
+    if(!data || !data.html || !data.timestamp) return
+
+    // Nur anzeigen wenn Einsatz aus den letzten 24 Stunden
+    const alter = Date.now() - new Date(data.timestamp).getTime()
+    if(alter > 24 * 60 * 60 * 1000) return
+
+    const ts = new Date(data.timestamp).toLocaleString("de-AT")
+
+    // Dezentes Popup unten links
+    const popup = document.createElement("div")
+    popup.id = "restorePopup"
+    popup.style.cssText = [
+      "position:fixed","bottom:60px","left:14px","z-index:9999",
+      "background:var(--bg-panel)","border:2px solid var(--accent-blue)",
+      "border-radius:10px","padding:14px 16px","max-width:280px",
+      "font-family:'Rajdhani',sans-serif","box-shadow:0 4px 20px rgba(0,0,0,0.3)"
+    ].join(";")
+    popup.innerHTML = `
+      <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent-blue);margin-bottom:6px">⚡ Laufender Einsatz gefunden</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">Letzter Stand: <b style="color:var(--text-primary)">${ts}</b></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button onclick="document.getElementById('restorePopup')?.remove();einsatzAusFirebaseWiederherstellen()"
+          style="padding:8px;background:rgba(26,86,219,0.1);border:1.5px solid rgba(26,86,219,0.4);color:var(--accent-blue);border-radius:6px;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer">
+          ☁ Fortführen
+        </button>
+        <button onclick="document.getElementById('restorePopup')?.remove()"
+          style="padding:8px;background:var(--bg-card);border:1.5px solid var(--border);color:var(--text-dim);border-radius:6px;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer">
+          Ignorieren
+        </button>
+      </div>
+    `
+    document.body.appendChild(popup)
+    // Automatisch nach 20 Sekunden ausblenden
+    setTimeout(() => popup.remove(), 20000)
+  } catch(e) {}
+}
 
 /* VOLLBILD */
 function toggleFullscreen(){
@@ -626,9 +671,23 @@ function syncToFirebase(){
 /* SAVE */
 function saveState(){
   if(!einsatzAktiv||!einsatzDateiHandle) return
-  let data={ timestamp:new Date().toISOString(), log:eventLog, theme:document.documentElement.getAttribute("data-theme")||"light", sichtungCounts }
+  let data={
+    timestamp: new Date().toISOString(),
+    einsatzStartZeit: einsatzStartZeit, // Timer-Startzeit mitspeichern
+    log: eventLog,
+    theme: document.documentElement.getAttribute("data-theme")||"light",
+    sichtungCounts
+  }
   saveAlarmstufen(); data.alarmstufen=alarmstufen; data.html=document.body.innerHTML
   writeFile(data)
+  // Backup in Firebase – inkl. HTML und Startzeit
+  if(FIREBASE_URL){
+    fetch(FIREBASE_URL + "/backup.json", {
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(data)
+    }).catch(()=>{})
+  }
 }
 async function writeFile(data){
   try{
@@ -657,9 +716,108 @@ function endEinsatz(){
   if(!confirm("Einsatz wirklich beenden?")) return
   logEvent("Einsatz beendet"); saveState(); clearInterval(autosaveTimer); stopTimer(); einsatzAktiv=false
 }
-function startTimer(){
+
+/* =========================================================
+   EINSATZ WIEDERHERSTELLEN
+========================================================= */
+
+// Option 1: Aus lokaler JSON-Datei
+async function einsatzAusDateiLaden(){
+  try {
+    const [fh] = await window.showOpenFilePicker({
+      types:[{description:"JSON Einsatzdatei",accept:{"application/json":[".json"]}}]
+    })
+    const file = await fh.getFile()
+    const text = await file.text()
+    const data = JSON.parse(text)
+
+    if(!data.html){
+      alert("Keine gültige Einsatzdatei.")
+      return
+    }
+
+    if(!confirm("Einsatz aus Datei wiederherstellen?\nAktuelle Ansicht wird überschrieben.")) return
+
+    // HTML wiederherstellen
+    document.body.innerHTML = data.html
+
+    // State wiederherstellen
+    if(data.sichtungCounts) sichtungCounts = data.sichtungCounts
+    if(data.alarmstufen)    alarmstufen    = data.alarmstufen
+    if(data.log)            eventLog       = data.log
+    if(data.theme)          document.documentElement.setAttribute("data-theme", data.theme)
+
+    // Speicherdatei – neuen Handle anlegen (alte Datei kann nicht direkt wiederverwendet werden)
+    const neuFh = await window.showSaveFilePicker({
+      suggestedName: fh.name,
+      types:[{description:"JSON",accept:{"application/json":[".json"]}}]
+    })
+    einsatzDateiHandle = neuFh
+    einsatzAktiv = true
+
+    // Neu initialisieren
+    initDrag(); initSEG(); initPatients(); initShortcuts()
+    updatePatients(); updateDashboard()
+    startTimer(data.einsatzStartZeit || null)
+    autosaveTimer = setInterval(()=>saveState(), 30000)
+
+    logEvent("Einsatz aus Datei wiederhergestellt")
+    saveState()
+
+  } catch(err){
+    if(err.name !== "AbortError") alert("Fehler beim Laden: " + err.message)
+  }
+}
+
+// Option 2: Aus Firebase (letzter gespeicherter Stand)
+async function einsatzAusFirebaseWiederherstellen(){
+  if(!FIREBASE_URL){
+    alert("Keine Firebase URL konfiguriert.")
+    return
+  }
+  try {
+    const res = await fetch(FIREBASE_URL + "/backup.json?t=" + Date.now())
+    if(!res.ok) throw new Error("Keine Verbindung")
+    const data = await res.json()
+
+    if(!data || !data.html){
+      alert("Kein Backup in Firebase gefunden.")
+      return
+    }
+
+    const ts = data.timestamp ? new Date(data.timestamp).toLocaleString("de-AT") : "unbekannt"
+    if(!confirm("Letzter Stand: " + ts + "\nEinsatz aus Firebase wiederherstellen?")) return
+
+    document.body.innerHTML = data.html
+    if(data.sichtungCounts) sichtungCounts = data.sichtungCounts
+    if(data.alarmstufen)    alarmstufen    = data.alarmstufen
+    if(data.log)            eventLog       = data.log
+    if(data.theme)          document.documentElement.setAttribute("data-theme", data.theme)
+
+    // Neues lokales Speicherziel wählen
+    const fh = await window.showSaveFilePicker({
+      suggestedName: "einsatz_wiederhergestellt_" + new Date().toISOString().slice(0,10) + ".json",
+      types:[{description:"JSON",accept:{"application/json":[".json"]}}]
+    })
+    einsatzDateiHandle = fh
+    einsatzAktiv = true
+
+    initDrag(); initSEG(); initPatients(); initShortcuts()
+    updatePatients(); updateDashboard()
+    startTimer(data.einsatzStartZeit || null)
+    autosaveTimer = setInterval(()=>saveState(), 30000)
+
+    logEvent("Einsatz aus Firebase wiederhergestellt")
+    saveState()
+
+  } catch(err){
+    if(err.name !== "AbortError") alert("Fehler: " + err.message)
+  }
+}
+function startTimer(startZeit){
   if(timerInterval) clearInterval(timerInterval)
-  einsatzStartZeit=Date.now()
+  // Wenn startZeit übergeben wird (Wiederherstellung) – dort weiterlaufen
+  einsatzStartZeit = startZeit || Date.now()
   timerInterval=setInterval(()=>{
     let diff=Date.now()-einsatzStartZeit
     let h=Math.floor(diff/3600000),m=Math.floor(diff/60000)%60,s=Math.floor(diff/1000)%60
