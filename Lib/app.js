@@ -792,52 +792,42 @@ async function einsatzAusFirebaseWiederherstellen(){
 }
 
 /* TIMER */
-function startTimer(){
-  if(!einsatzStartZeit) einsatzStartZeit = new Date()
-  stopTimer()
-  timerInterval = setInterval(updateTimer, 1000)
-  updateTimer()
+function startTimer(startZeit){
+  if(!einsatzStartZeit) einsatzStartZeit = startZeit || Date.now()
+  timerInterval=setInterval(()=>{
+    let diff=Date.now()-einsatzStartZeit
+    let h=Math.floor(diff/3600000),m=Math.floor(diff/60000)%60,s=Math.floor(diff/1000)%60
+    const el=document.getElementById("timer")
+    if(el) el.innerText=String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")
+  },1000)
 }
-function stopTimer(){
-  clearInterval(timerInterval)
-  timerInterval = null
-}
-function updateTimer(){
-  const el = document.getElementById("timer")
-  if(!el || !einsatzStartZeit) return
-  const diff = Math.floor((Date.now() - einsatzStartZeit.getTime()) / 1000)
-  const h = String(Math.floor(diff/3600)).padStart(2,"0")
-  const m = String(Math.floor((diff%3600)/60)).padStart(2,"0")
-  const s = String(diff%60).padStart(2,"0")
-  el.textContent = h+":"+m+":"+s
-}
+function stopTimer(){ clearInterval(timerInterval); timerInterval=null }
 
 /* LOG */
-function logEvent(text){
-  const now = new Date().toLocaleTimeString("de-AT")
-  eventLog.unshift(now + " – " + text)
-  if(eventLog.length > 200) eventLog.pop()
-}
+function logEvent(text){ eventLog.push(new Date().toLocaleTimeString()+" | "+text) }
 
 /* THEME */
 function toggleTheme(){
-  const html = document.documentElement
-  const current = html.getAttribute("data-theme") || "light"
-  const next = current === "light" ? "dark" : "light"
-  html.setAttribute("data-theme", next)
-  const btn = document.getElementById("themeToggle")
-  if(btn) btn.textContent = next === "dark" ? "☀️" : "🌙"
+  const html=document.documentElement
+  const isLight=html.getAttribute("data-theme")==="light"
+  html.setAttribute("data-theme",isLight?"dark":"light")
+  const btn=document.getElementById("themeBtn")
+  if(btn) btn.textContent=isLight?"\u2600":"\uD83C\uDF19"
   saveState()
 }
 
 /* RELOAD-SCHUTZ */
 function initReloadProtection(){
-  window.addEventListener("beforeunload", (e)=>{
-    if(einsatzAktiv){
-      e.preventDefault()
-      e.returnValue = ""
+  window.addEventListener("keydown",function(e){
+    const isF5=e.key==="F5", isCtrlR=(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="r"
+    if(isF5||isCtrlR){
+      e.preventDefault(); e.stopPropagation()
+      if(confirm("Seite wirklich neu laden?\nAlle nicht gespeicherten Daten gehen verloren!")){
+        window.removeEventListener("keydown",arguments.callee); window.location.reload()
+      }
     }
-  })
+  },true)
+  window.addEventListener("beforeunload",function(e){ e.preventDefault(); e.returnValue="Seite verlassen?" })
 }
 
 /* SICHTUNG UI */
@@ -852,16 +842,40 @@ function resetSichtungUI(){
   document.querySelectorAll(".sichtungBtn").forEach(b=>b.classList.remove("active"))
 }
 
-/* ALARMSTUFEN */
+/* ALARMSTUFEN – fix 5 Stufen, vorbelegt aus GSM-DFB */
+if(alarmstufen.length < 5){
+  alarmstufen = [
+    {
+      titel: "A1 – Kleinlage",
+      text: "RESSOURCEN:\n• SEG-3 (ersatzweise SEG-1)\n• SEG-10\n• SEG-21 oder SEG-22\n• 2× RTW\n\nFUNKKANAL: BRW-KAT-1\n\nEINSATZTAKTIK: Ein RTW als Bergebereitschaft/PSS, zweiter RTW im SEG-Bus. Gehähige Patienten primär im SEG-Bus. SEG-10 als Führungsunterstützung.\n\nAUSRUFUNG gemäß AO oder durch EL-RD auch auf Anfahrt."
+    },
+    {
+      titel: "A2 – Mittellage",
+      text: "RESSOURCEN:\n• SEG-1 (ersatzweise SEG-3), SEG-10\n• SEG-21 oder SEG-22, SEG-EVAK\n• MLS-Wien, ZTR-OA, SAN-Team HIO\n• 2× RTW, 2× N-KTW, 1× NEF\n\nFUNKKANAL: BRW-KAT-1\n\nMASSNAHMEN:\n✓ Großschadensprotokoll im Berufsrettungsportal\n✓ Vorverständigung WIGEV Journaldienst\n✓ Alarmierung SAN-Team HIO\n\nEINSATZABSCHNITTE:\n1. Intervention (ZGKDT)\n2. Behandlung (erfahrene Führungskraft)\n3. Transport (MLS Wien / QM Leitstelle)"
+    },
+    {
+      titel: "A3 – Großlage / MANV",
+      text: "RESSOURCEN: SEG-1, SEG-3, SEG-10, SEG-21+22, SEG-EVAK, SEG-11+12, MLS-Wien, ZTR-OA, mind. 1× FISU + RTW/N-KTW/NEF je MANV\n\nBHP-KAPAZITÄTEN:\n• SEG-21/22: je 25 Plätze (15× SK3, 10× SK1/SK2)\n• SEG-11/12: je 10 Plätze (SK1/SK2)\n\nMANV-STICHWORT (SK1+SK2):\nMANV-10: 5 RTW/NKTW, 2 NEF\nMANV-20: 9 RTW/NKTW, 3 NEF\nMANV-30: 13 RTW/NKTW, 4 NEF\nMANV-40: 17 RTW/NKTW, 5 NEF\nMANV-50: 21 RTW/NKTW, 6 NEF\nMANV-60: 25 RTW/NKTW, 7 NEF\n\nMASSNAHMEN: Großschadensprotokoll, Bettenabsprache SOP LS-33, Info Kommando MA70+MD-OS, Anforderung Transportressourcen SAN-Team HIO"
+    },
+    {
+      titel: "A4 – Übergroßlage",
+      text: "AKTIVIERUNG wenn MA70-Behandlungskapazitäten nicht ausreichen.\n\nZUSÄTZLICHE BHP:\n• BF Wien AB Ergänzungsmaterial (2× MT-40, Wache Leopoldstadt)\n• Bis zu 5× BHP 25 privater Rettungsorg. (je in 30-Min-Intervallen)\n\nMANV-STICHWORT A4:\nMANV-70: 29 RTW/NKTW, 8 NEF\nMANV-80: 33 RTW/NKTW, 9 NEF\nMANV-90: 37 RTW/NKTW, 10 NEF\nMANV-100: 41 RTW/NKTW, 11 NEF\nMANV-110: 45 RTW/NKTW, 12 NEF\n\nMASSNAHMEN: KTD auf Minimum, Ressourcen anderer Bundesländer, Nachbesetzung alle MA70-Ressourcen, Einberufung Einsatzstab MA70"
+    },
+    {
+      titel: "A5 – Sonderlage / Dauerlage",
+      text: "AKTIVIERUNG: Nur durch RDL oder Stellvertreter.\nFür Einsätze > 24h oder Sonderlagen mit erweiterter Führungsstruktur.\n\nBESONDERHEITEN:\n• Einsatzführung aus dem Einsatzstab MA70 (nicht von vorne)\n• Gesamteinsatzleitung: RDL oder Beauftragter\n• Voller Zugriff auf alle Hilfseinheiten privater Org.\n• Maßnahmen individuell zugeschnitten + dokumentieren\n\nKOMMUNIKATION:\nBRW-KAT-1 (bzw. KAT-2 bei Paralleleinsatz)\nSonderlagen SEG-Disponent: BRW-KAT-3"
+    }
+  ]
+}
+
 function initAlarmstufen(){
-  if(alarmstufen.length === 0){
-    alarmstufen = [
-      { titel:"A1 – Kleineinsatz",    text:"" },
-      { titel:"A2 – Mittlerer Einsatz", text:"" },
-      { titel:"A3 – Großeinsatz",     text:"" },
-      { titel:"A4 – Überlage",        text:"" },
-      { titel:"A5 – Sonderlage",      text:"" }
-    ]
+  // Bereits oben beim Laden befüllt – diese Funktion stellt nur sicher
+  // dass beim ersten Öffnen des Popups nichts leer ist
+  if(alarmstufen.length < 5) {
+    // Fallback falls Array irgendwie kleiner geworden ist
+    while(alarmstufen.length < 5){
+      alarmstufen.push({ titel: "Alarmstufe " + (alarmstufen.length + 1), text: "" })
+    }
   }
 }
 
