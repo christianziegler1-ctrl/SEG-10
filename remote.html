@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Remote · SEG-10</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#eef0f5;font-family:'Rajdhani',sans-serif}
+
+@media (orientation:portrait){
+  body::before{
+    content:"Bitte iPad drehen ↻";
+    position:fixed;inset:0;
+    background:#1a1f2e;color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;font-weight:700;letter-spacing:2px;text-transform:uppercase;z-index:9999;
+  }
+  #app{display:none}
+}
+
+#app{display:grid;grid-template-rows:36px 1fr;height:100vh;width:100vw}
+
+/* HEADER */
+#hdr{background:#fff;border-bottom:1px solid #dde1ec;display:flex;align-items:center;justify-content:space-between;padding:0 10px}
+.hl{display:flex;align-items:center;gap:7px}
+.hlogo{width:22px;height:22px;background:#c0392b;border-radius:5px;display:flex;align-items:center;justify-content:center}
+.hlogo svg{width:12px;height:12px}
+.htitle{font-size:12px;font-weight:700;color:#0f1623;letter-spacing:1px;text-transform:uppercase}
+.hsub{font-size:8px;color:#8a96a8;letter-spacing:2px;font-family:'Share Tech Mono',monospace;text-transform:uppercase}
+#hst{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:700;letter-spacing:1px;font-family:'Share Tech Mono',monospace}
+#hst.on{color:#1a7a52}
+#hst.off{color:#c0392b}
+.hdot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.hdot.p{animation:p 2s infinite}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* GRID 6×3 */
+#grid{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  grid-template-rows:repeat(3,1fr);
+  gap:5px;
+  padding:5px;
+}
+
+/* BUTTON */
+.b{
+  background:#fff;border:1.5px solid #dde1ec;border-radius:8px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  cursor:pointer;user-select:none;transition:transform .1s;
+  position:relative;overflow:hidden;min-width:0;min-height:0;
+}
+.b:active{transform:scale(0.90)}
+.b .ic{font-size:15px;line-height:1;display:block}
+.b .lb{font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;text-align:center;line-height:1.15}
+.b .ct{position:absolute;top:3px;right:4px;font-size:8px;font-family:'Share Tech Mono',monospace;font-weight:700;padding:1px 4px;border-radius:10px;background:#c0392b;color:#fff;display:none}
+.b.counted .ct{display:block}
+
+.b.r{border-color:rgba(192,57,43,.3);background:rgba(252,235,235,.55)}.b.r .lb{color:#c0392b}
+.b.o{border-color:rgba(196,125,0,.3);background:rgba(250,238,218,.45)}.b.o .lb{color:#c47d00}
+.b.g{border-color:rgba(26,122,82,.3);background:rgba(234,243,222,.5)}.b.g .lb{color:#1a7a52}
+.b.bl{border-color:rgba(26,86,219,.25);background:rgba(230,241,251,.5)}.b.bl .lb{color:#1a56db}
+.b.gr{border-color:#dde1ec;background:#fafbfd}.b.gr .lb{color:#4a5268}
+.b.dk{border-color:#3a4460;background:#1a1f2e}.b.dk .lb{color:#e8ecf4}
+
+/* TOAST */
+#toast{
+  position:fixed;bottom:8px;left:50%;
+  transform:translateX(-50%) translateY(60px);
+  background:#1a1f2e;color:#e8ecf4;
+  padding:5px 14px;border-radius:7px;
+  font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  font-family:'Rajdhani',sans-serif;
+  transition:transform .2s cubic-bezier(.34,1.56,.64,1);
+  z-index:999;pointer-events:none;white-space:nowrap;
+}
+#toast.s{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div id="app">
+
+<div id="hdr">
+  <div class="hl">
+    <div class="hlogo">
+      <svg viewBox="0 0 12 12" fill="none"><rect x="4.5" y="0" width="3" height="12" rx="1" fill="white"/><rect x="0" y="4.5" width="12" height="3" rx="1" fill="white"/></svg>
+    </div>
+    <div>
+      <div class="htitle">Einsatzboard · Remote</div>
+      <div class="hsub">SEG-10 · Berufsrettung Wien</div>
+    </div>
+  </div>
+  <div id="hst" class="off"><div class="hdot"></div><span id="hstTxt">Verbinde…</span></div>
+</div>
+
+<div id="grid">
+
+  <!-- REIHE 1: Fahrzeuge -->
+  <button class="b r" onclick="cmd('createVehicle','RTW')">
+    <span class="ct" id="ct-RTW">0</span>
+    <span class="ic">🚑</span><span class="lb">+ RTW</span>
+  </button>
+  <button class="b r" onclick="cmd('createVehicle','NEF')">
+    <span class="ct" id="ct-NEF">0</span>
+    <span class="ic">🚗</span><span class="lb">+ NEF</span>
+  </button>
+  <button class="b o" onclick="cmd('createVehicle','KTW')">
+    <span class="ct" id="ct-KTW">0</span>
+    <span class="ic">🚐</span><span class="lb">+ KTW</span>
+  </button>
+  <button class="b bl" onclick="cmd('createVehicle','FISU')">
+    <span class="ct" id="ct-FISU">0</span>
+    <span class="ic">🚒</span><span class="lb">+ FISU</span>
+  </button>
+  <button class="b gr" onclick="cmd('createVehicle','NAH')">
+    <span class="ct" id="ct-NAH">0</span>
+    <span class="ic">🩺</span><span class="lb">+ NAH</span>
+  </button>
+  <button class="b bl" onclick="cmd('openVehicleMenu')">
+    <span class="ic">🚘</span><span class="lb">Fzg-Menü</span>
+  </button>
+
+  <!-- REIHE 2: Bereiche + Führung -->
+  <button class="b o" onclick="cmd('createHalteplatz')">
+    <span class="ic">🅿️</span><span class="lb">Halteplatz</span>
+  </button>
+  <button class="b bl" onclick="cmd('createAbschnitt')">
+    <span class="ic">📐</span><span class="lb">Abschnitt</span>
+  </button>
+  <button class="b g" onclick="cmd('createVorsichtung')">
+    <span class="ic">👁</span><span class="lb">Vorsichtung</span>
+  </button>
+  <button class="b g" onclick="cmd('createPSS')">
+    <span class="ic">🏕</span><span class="lb">PSS</span>
+  </button>
+  <button class="b bl" onclick="cmd('createBER')">
+    <span class="ic">🔷</span><span class="lb">BER</span>
+  </button>
+  <button class="b gr" onclick="cmd('openFuehrungskraftMenu')">
+    <span class="ic">👷</span><span class="lb">Führungskraft</span>
+  </button>
+
+  <!-- REIHE 3: Einsatz + System -->
+  <button class="b g" onclick="cmd('startEinsatz')">
+    <span class="ic">▶️</span><span class="lb">Einsatz Start</span>
+  </button>
+  <button class="b r" onclick="cmd('endEinsatz')">
+    <span class="ic">⏹️</span><span class="lb">Einsatz Ende</span>
+  </button>
+  <button class="b o" onclick="cmd('openAlarmstufen')">
+    <span class="ic">🚨</span><span class="lb">Alarmstufen</span>
+  </button>
+  <button class="b bl" onclick="cmd('openPatientMenu')">
+    <span class="ic">🫀</span><span class="lb">Patient</span>
+  </button>
+  <button class="b gr" onclick="cmd('exportEinsatz')">
+    <span class="ic">📄</span><span class="lb">Export</span>
+  </button>
+  <button class="b dk" onclick="cmd('toggleTheme')">
+    <span class="ic">🌓</span><span class="lb">Dark Mode</span>
+  </button>
+
+</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  NUR DIESE URL ANPASSEN – gleiche wie in app.js
+const FB = "https://seg-10-dashboard-default-rtdb.europe-west1.firebasedatabase.app"
+// ══════════════════════════════════════════════════
+
+let vehCounts = {}
+
+function cmd(action, param) {
+  if(action === "createVehicle" && param){
+    vehCounts[param] = (vehCounts[param]||0) + 1
+    const el = document.getElementById("ct-" + param)
+    if(el){ el.textContent = vehCounts[param]; el.closest(".b").classList.add("counted") }
+  }
+
+  const payload = {
+    id: Date.now() + "_" + Math.random().toString(36).slice(2,6),
+    action,
+    param: param || null,
+    ts: new Date().toISOString(),
+    done: false
+  }
+
+  fetch(FB + "/remote/cmd.json", {
+    method: "PUT",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  })
+  .then(() => showToast(label(action, param)))
+  .catch(() => showToast("⚠ Firebase Fehler"))
+}
+
+function label(action, param){
+  const m = {
+    createVehicle:        "+ " + (param||"") + " angelegt",
+    createHalteplatz:     "Halteplatz erstellt",
+    createAbschnitt:      "Abschnitt erstellt",
+    createVorsichtung:    "Vorsichtung erstellt",
+    createPSS:            "PSS erstellt",
+    createBER:            "BER erstellt",
+    startEinsatz:         "Einsatz gestartet",
+    endEinsatz:           "Einsatz beendet",
+    openAlarmstufen:      "Alarmstufen",
+    openPatientMenu:      "Patientenmenü",
+    openVehicleMenu:      "Fahrzeugmenü",
+    openFuehrungskraftMenu:"Führungskraftmenü",
+    exportEinsatz:        "Export",
+    toggleTheme:          "Dark Mode"
+  }
+  return m[action] || action
+}
+
+function checkStatus(){
+  fetch(FB + "/dashboard/ts.json?t=" + Date.now())
+    .then(r => {
+      const el = document.getElementById("hst")
+      const dot = el.querySelector(".hdot")
+      if(r.ok){
+        el.className = "on"
+        dot.className = "hdot p"
+        document.getElementById("hstTxt").textContent = "FIREBASE OK"
+      } else { setOffline() }
+    })
+    .catch(() => setOffline())
+}
+
+function setOffline(){
+  const el = document.getElementById("hst")
+  el.className = "off"
+  el.querySelector(".hdot").className = "hdot"
+  document.getElementById("hstTxt").textContent = "OFFLINE"
+}
+
+function showToast(msg){
+  const t = document.getElementById("toast")
+  t.textContent = msg; t.classList.add("s")
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("s"), 1600)
+}
+
+checkStatus()
+setInterval(checkStatus, 10000)
+</script>
+</body>
+</html>
