@@ -304,7 +304,7 @@ function createAbschnitt(){
   }
   document.getElementById("abschnitteContainer").appendChild(ab)
   logEvent("Abschnitt erstellt: Abschnitt " + abschnittCount)
-  initDrag()
+  initDrag(); initPatients()
   saveState()
 }
 
@@ -866,6 +866,8 @@ function tagebuchSenden(){
 
   inp.value = ""
   logEvent("Tagebuch: " + text)
+  // Immer in localStorage sichern, unabhaengig ob Einsatz aktiv
+  try{ localStorage.setItem("tagebuch", JSON.stringify(tagebuch)) }catch{}
   saveState()
 }
 
@@ -873,6 +875,15 @@ document.addEventListener("DOMContentLoaded", ()=>{
   document.getElementById("tagebuchInput")?.addEventListener("keydown", e=>{
     if(e.key === "Enter"){ e.preventDefault(); tagebuchSenden() }
   })
+  // Letzten Eintrag aus localStorage wiederherstellen
+  try{
+    const saved = localStorage.getItem("tagebuch")
+    if(saved){
+      tagebuch = JSON.parse(saved)
+      const el = document.getElementById("tagebuchLetzter")
+      if(el && tagebuch.length) el.textContent = tagebuch[tagebuch.length-1]
+    }
+  }catch{}
 })
 
 /* THEME */

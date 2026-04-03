@@ -1358,12 +1358,16 @@ header {
 /* Abschnitte kompakter damit sie auf den Bildschirm passen */
 .abschnitt {
   font-size: clamp(10px,0.75vw,13px) !important;
+  padding: clamp(4px,0.4vw,8px) !important;
 }
 .abschnitt .drop {
-  min-height: clamp(40px,4vh,70px);
+  min-height: clamp(36px,3.5vh,60px);
 }
 .abschnitt .adressfeld {
   display: none;
+}
+.abschnitt .abschnittName {
+  font-size: clamp(11px,0.8vw,14px);
 }
 .abschnittHeader {
   display: block;
