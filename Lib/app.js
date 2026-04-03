@@ -843,6 +843,35 @@ function initReloadProtection(){
 
 function logEvent(text){ eventLog.push(new Date().toLocaleTimeString()+" | "+text) }
 
+/* =========================================================
+   EINSATZTAGEBUCH
+========================================================= */
+let tagebuch = []
+
+function tagebuchSenden(){
+  const inp = document.getElementById("tagebuchInput")
+  const text = inp?.value?.trim()
+  if(!text) return
+
+  const time = new Date().toLocaleTimeString()
+  const eintrag = time + "  |  " + text
+
+  tagebuch.push(eintrag)
+
+  const el = document.getElementById("tagebuchLetzter")
+  if(el) el.textContent = eintrag
+
+  inp.value = ""
+  logEvent("Tagebuch: " + text)
+  saveState()
+}
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  document.getElementById("tagebuchInput")?.addEventListener("keydown", e=>{
+    if(e.key === "Enter"){ e.preventDefault(); tagebuchSenden() }
+  })
+})
+
 /* THEME */
 function toggleTheme(){
   const html=document.documentElement
