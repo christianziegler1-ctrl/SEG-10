@@ -22,6 +22,7 @@ let vehicleHotkeysActive = false
 
 let currentSichtung = null
 let sichtungCounts = { SK1: 0, SK2: 0, SK3: 0, SK4: 0 }
+let demografieLog = [] // [{m_erw, w_erw, m_kind, w_kind, bereich}]
 
 let alarmstufen = []
 let aktiveAlarmstufe = null
@@ -248,12 +249,52 @@ function createVehicle(type){
 /* SEG BUTTONS */
 function initSEG(){
   document.querySelectorAll(".seg").forEach(btn=>{
+    // Click = aktiv/inaktiv toggle (nur wenn nicht gerade gedraggt)
     btn.onclick=()=>{
+      if(btn._wasDragged){ btn._wasDragged=false; return }
       btn.classList.toggle("active")
       const text = btn.innerText.trim()
       logEvent(btn.classList.contains("active") ? "SEG aktiviert: " + text : "SEG deaktiviert: " + text)
       saveState()
     }
+    // Drag: SEG-Button in Bereich ziehen
+    btn.setAttribute("draggable","true")
+    btn.addEventListener("dragstart", e=>{
+      btn._wasDragged = true
+      dragged = btn
+      e.dataTransfer.effectAllowed = "move"
+    })
+    btn.addEventListener("dragend", ()=>{
+      dragged = null
+    })
+  })
+  // Bereiche als Drop-Ziele für SEG-Buttons
+  document.querySelectorAll(".bereich, #zufahrt").forEach(area=>{
+    area.addEventListener("dragover", e=>{
+      if(dragged && dragged.classList.contains("seg")){
+        e.preventDefault()
+        e.dataTransfer.dropEffect = "move"
+      }
+    })
+    area.addEventListener("drop", e=>{
+      if(!dragged || !dragged.classList.contains("seg")) return
+      e.preventDefault()
+      e.stopPropagation()
+      const segName = dragged.innerText.trim()
+      // Entferne alten Standort-Badge falls vorhanden
+      area.querySelectorAll(".seg-badge").forEach(b=>{ if(b.dataset.seg===segName) b.remove() })
+      // Füge Badge in Bereich ein
+      const badge = document.createElement("div")
+      badge.className = "seg-badge"
+      badge.dataset.seg = segName
+      badge.innerHTML = segName + ' <span class="seg-badge-remove" onclick="this.parentElement.remove();saveState()">×</span>'
+      // Vor der Drop-Zone einfügen
+      const drop = area.classList.contains("drop") ? area : area.querySelector(".drop")
+      if(drop) area.insertBefore(badge, drop)
+      else area.appendChild(badge)
+      logEvent("SEG zugewiesen: " + segName + " → " + (area.querySelector(".bheader,.abschnittName")?.innerText?.trim() || area.id || "Bereich"))
+      saveState()
+    })
   })
   document.querySelectorAll(".unit").forEach(h=>{
     h.onclick=()=>{
@@ -394,6 +435,10 @@ function sendFunk(){
 
 /* PATIENTEN */
 function initPatients(){
+  // SK-Schnellbuttons in alle Bereiche einfügen (außer Zufahrt)
+  document.querySelectorAll(".bereich").forEach(b=>{
+    if(!b.classList.contains("zufahrtContainer")) addSkButtons(b)
+  })
   document.querySelectorAll(".patients").forEach(el=>{
     el.onclick=(e)=>{
       e.stopPropagation()
@@ -427,6 +472,15 @@ function patientAction(action){
         currentPatientBox.dataset.sichtung=currentSichtung
         logEvent("Patienten angelegt: "+amount+" ("+currentSichtung+")")
       }else{ logEvent("Patienten angelegt: "+amount) }
+      // Demografie erfassen
+      const me=parseInt(document.getElementById("dem_m_erw")?.value)||0
+      const we=parseInt(document.getElementById("dem_w_erw")?.value)||0
+      const mk=parseInt(document.getElementById("dem_m_kind")?.value)||0
+      const wk=parseInt(document.getElementById("dem_w_kind")?.value)||0
+      if(me||we||mk||wk){
+        demografieLog.push({m_erw:me,w_erw:we,m_kind:mk,w_kind:wk,sk:currentSichtung||"",ts:new Date().toLocaleTimeString()})
+        ;["dem_m_erw","dem_w_erw","dem_m_kind","dem_w_kind"].forEach(id=>{ const el=document.getElementById(id); if(el) el.value="" })
+      }
     }else if(action==="DELETE"){
       let d=Math.min(amount,currentManual)
       currentPatientBox.dataset.manual=currentManual-d
@@ -524,6 +578,71 @@ function updatePatients(){
     if(unit==="ZUFAHRT") field.style.display=total===0?"none":"block"
   })
   updateDashboard()
+}
+
+
+/* =========================================================
+   SCHNELL-SICHTUNG
+========================================================= */
+function schnellSichtung(bereich, sk){
+  const field = bereich.querySelector(".patients")
+  if(!field) return
+  const prev = parseInt(field.dataset.manual||"0")||0
+  field.dataset.manual = prev + 1
+  sichtungCounts[sk] = (sichtungCounts[sk]||0) + 1
+  // SK-Zähler im Bereich erhöhen
+  const counts = bereich._skCounts = bereich._skCounts || {SK1:0,SK2:0,SK3:0,SK4:0}
+  counts[sk] = (counts[sk]||0) + 1
+  updateSkButtons(bereich)
+  updatePatients()
+  logEvent("Schnell-SK: +" + sk + " in " + (bereich.querySelector(".bheader,.abschnittName")?.innerText||"Bereich"))
+  saveState()
+}
+
+function updateSkButtons(bereich){
+  const counts = bereich._skCounts || {SK1:0,SK2:0,SK3:0,SK4:0}
+  bereich.querySelectorAll(".sk-btn").forEach(btn=>{
+    const sk = btn.dataset.sk
+    const n = counts[sk]||0
+    btn.innerHTML = btn.dataset.lbl + (n>0 ? ": <b>"+n+"</b>" : "")
+    btn.classList.toggle("has-count", n>0)
+  })
+}
+
+/* =========================================================
+   SICHTUNGSKLASSE KORRIGIEREN
+========================================================= */
+function sichtungKorrigieren(bereich, alteSK, neueSK){
+  if(alteSK === neueSK) return
+  // Alte SK -1, neue SK +1, Gesamtzahl bleibt gleich
+  if(alteSK && sichtungCounts[alteSK] > 0) sichtungCounts[alteSK]--
+  sichtungCounts[neueSK] = (sichtungCounts[neueSK]||0) + 1
+  updatePatients()
+  logEvent("SK korrigiert: " + alteSK + " → " + neueSK)
+  saveState()
+}
+
+
+function addSkButtons(bereich){
+  if(bereich.querySelector(".sk-buttons")) return // schon drin
+  const div = document.createElement("div")
+  div.className = "sk-buttons"
+  const btns = [
+    {cls:'sk1',lbl:'R',  sk:'SK1',title:'SK1 Rot'},
+    {cls:'sk2',lbl:'G',  sk:'SK2',title:'SK2 Gelb'},
+    {cls:'sk3',lbl:'Gr', sk:'SK3',title:'SK3 Grün'},
+    {cls:'sk4',lbl:'Sw', sk:'SK4',title:'SK4 Schwarz'},
+  ]
+  div.innerHTML = btns.map(b=>
+    `<button class="sk-btn ${b.cls}" title="${b.title}" data-sk="${b.sk}" data-lbl="${b.lbl}">${b.lbl}</button>`
+  ).join('')
+  div.querySelectorAll('.sk-btn').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation()
+      schnellSichtung(btn.closest('.bereich'), btn.dataset.sk)
+    })
+  })
+  bereich.appendChild(div)
 }
 
 /* SICHERHEIT: Fahrzeuge/FK bei Bereich-Loeschen zurueck in Zufahrt */
@@ -677,6 +796,7 @@ function saveState(){
     einsatzStartZeit: einsatzStartZeit, // Timer-Startzeit mitspeichern
     log: eventLog,
     tagebuch: tagebuch,
+    demografieLog: demografieLog,
     theme: document.documentElement.getAttribute("data-theme")||"light",
     sichtungCounts
   }
@@ -747,6 +867,7 @@ async function einsatzAusDateiLaden(){
     if(data.sichtungCounts) sichtungCounts = data.sichtungCounts
     if(data.alarmstufen)    alarmstufen    = data.alarmstufen
     if(data.log)            eventLog       = data.log
+    if(data.demografieLog)  demografieLog = data.demografieLog
     if(data.tagebuch)       { tagebuch = data.tagebuch; const el=document.getElementById("tagebuchLetzter"); if(el&&tagebuch.length) el.textContent=tagebuch[tagebuch.length-1] }
     if(data.theme)          document.documentElement.setAttribute("data-theme", data.theme)
 

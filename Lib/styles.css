@@ -190,9 +190,9 @@ header {
 }
 
 .segButtons button {
-  background: rgba(192,57,43,0.08);
-  color: var(--accent-red);
-  border: 1.5px solid rgba(192,57,43,0.3);
+  background: rgba(192,57,43,0.12);
+  color: #a02020;
+  border: 1.5px solid rgba(192,57,43,0.45);
   padding: 8px 18px;
   border-radius: 5px;
   cursor: pointer;
@@ -205,10 +205,15 @@ header {
 .segButtons button:hover { background: rgba(192,57,43,0.18); }
 
 .seg.active {
-  background: rgba(26,122,82,0.15) !important;
-  color: var(--accent-green) !important;
-  border-color: rgba(26,122,82,0.5) !important;
+  background: rgba(26,122,82,0.22) !important;
+  color: #155f3e !important;
+  border-color: rgba(26,122,82,0.7) !important;
   box-shadow: var(--glow-green);
+}
+[data-theme="dark"] .seg.active {
+  color: var(--accent-green) !important;
+  background: rgba(46,196,182,0.18) !important;
+  border-color: rgba(46,196,182,0.6) !important;
 }
 
 /* =========================================================
@@ -238,9 +243,9 @@ header {
 ========================================================= */
 .bheader {
   display: inline-block;
-  background: rgba(192,57,43,0.1);
-  color: var(--accent-red);
-  border: 1.5px solid rgba(192,57,43,0.3);
+  background: rgba(192,57,43,0.14);
+  color: #a02020;
+  border: 1.5px solid rgba(192,57,43,0.5);
   padding: 5px 14px;
   border-radius: 5px;
   margin-bottom: 10px;
@@ -253,10 +258,15 @@ header {
 }
 .bheader:hover { background: rgba(192,57,43,0.2); }
 .bheader.active {
-  background: rgba(26,122,82,0.12);
-  color: var(--accent-green);
-  border-color: rgba(26,122,82,0.45);
+  background: rgba(26,122,82,0.22);
+  color: #155f3e;
+  border-color: rgba(26,122,82,0.7);
   box-shadow: var(--glow-green);
+}
+[data-theme="dark"] .bheader.active {
+  color: var(--accent-green);
+  background: rgba(46,196,182,0.15);
+  border-color: rgba(46,196,182,0.55);
 }
 
 /* =========================================================
@@ -1355,19 +1365,31 @@ header {
   gap: clamp(5px,0.5vw,8px);
   align-items: start;
 }
-/* Abschnitte kompakter damit sie auf den Bildschirm passen */
+/* Abschnitte kompakter */
 .abschnitt {
-  font-size: clamp(10px,0.75vw,13px) !important;
-  padding: clamp(4px,0.4vw,8px) !important;
+  padding: 6px 8px 6px 10px !important;
 }
 .abschnitt .drop {
-  min-height: clamp(36px,3.5vh,60px);
+  min-height: clamp(30px,3vh,50px);
 }
 .abschnitt .adressfeld {
   display: none;
 }
+.abschnitt .abschnittHeader {
+  display: block !important;
+  width: 100% !important;
+  margin-bottom: 3px;
+}
 .abschnitt .abschnittName {
-  font-size: clamp(11px,0.8vw,14px);
+  display: block !important;
+  width: 100% !important;
+  font-size: clamp(12px,0.9vw,15px);
+  padding: 1px 0 3px;
+}
+.abschnitt .patients {
+  position: static !important;
+  display: inline-block;
+  margin: 2px 0 4px 0;
 }
 .abschnittHeader {
   display: block;
@@ -1491,3 +1513,86 @@ header {
   0%, 100% { box-shadow: var(--glow-red); }
   50% { box-shadow: 0 0 20px rgba(192,57,43,0.5); }
 }
+
+/* =========================================================
+   SCHNELL-SICHTUNG BUTTONS (in jedem Bereich oben rechts)
+========================================================= */
+.sk-buttons {
+  display: flex;
+  gap: 3px;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.sk-btn {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 4px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+  user-select: none;
+  line-height: 1;
+  white-space: nowrap;
+}
+.sk-btn.has-count {
+  min-width: 32px;
+  font-size: 12px;
+}
+.sk-btn b { font-size: 13px; margin-left: 1px; }
+.sk-btn:active { transform: scale(0.88); }
+.sk-btn.sk1 { background: rgba(192,57,43,0.18); color: var(--accent-red);   border: 1.5px solid rgba(192,57,43,0.4); }
+.sk-btn.sk2 { background: rgba(212,137,0,0.18);  color: #d48900;            border: 1.5px solid rgba(212,137,0,0.4); }
+.sk-btn.sk3 { background: rgba(26,122,82,0.18);  color: var(--accent-green);border: 1.5px solid rgba(26,122,82,0.4); }
+.sk-btn.sk4 { background: rgba(60,60,60,0.18);   color: var(--text-dim);    border: 1.5px solid var(--border); }
+.sk-btn:hover.sk1 { background: rgba(192,57,43,0.35); }
+.sk-btn:hover.sk2 { background: rgba(212,137,0,0.35); }
+.sk-btn:hover.sk3 { background: rgba(26,122,82,0.35); }
+.sk-btn:hover.sk4 { background: rgba(60,60,60,0.35); }
+.bereich { position: relative; }
+
+/* SEG-Badge in Bereichen */
+.seg-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(192,57,43,0.12);
+  border: 1.5px solid rgba(192,57,43,0.35);
+  border-radius: 5px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-red);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 2px 3px 2px 0;
+}
+.seg-badge.active {
+  background: rgba(26,122,82,0.12);
+  border-color: rgba(26,122,82,0.4);
+  color: var(--accent-green);
+}
+.seg-badge-remove {
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.6;
+  color: inherit;
+}
+.seg-badge-remove:hover { opacity: 1; }
+
+/* Light mode: klarere Rot/Grün Unterscheidung */
+:root .seg { color: #a52020; border-color: rgba(165,32,32,0.45); }
+:root .seg.active { color: #0e5c38 !important; background: rgba(14,92,56,0.18) !important; border-color: rgba(14,92,56,0.65) !important; }
+:root .bheader { color: #a52020; border-color: rgba(165,32,32,0.5); background: rgba(165,32,32,0.12); }
+:root .bheader.active { color: #0e5c38; border-color: rgba(14,92,56,0.65); background: rgba(14,92,56,0.18); }
+[data-theme="dark"] .seg { color: var(--accent-red); }
+[data-theme="dark"] .bheader { color: var(--accent-red); }
