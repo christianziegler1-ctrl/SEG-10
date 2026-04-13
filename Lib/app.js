@@ -22,7 +22,7 @@ let vehicleHotkeysActive = false
 
 let currentSichtung = null
 let sichtungCounts = { SK1: 0, SK2: 0, SK3: 0, SK4: 0 }
-let demografieLog = [] // [{m_erw, w_erw, m_kind, w_kind, bereich}]
+let demografieLog = []
 
 let alarmstufen = []
 let aktiveAlarmstufe = null
@@ -249,58 +249,60 @@ function createVehicle(type){
 /* SEG BUTTONS */
 function initSEG(){
   document.querySelectorAll(".seg").forEach(btn=>{
-    // Click = aktiv/inaktiv toggle (nur wenn nicht gerade gedraggt)
     btn.onclick=()=>{
       if(btn._wasDragged){ btn._wasDragged=false; return }
       btn.classList.toggle("active")
-      const text = btn.innerText.trim()
-      logEvent(btn.classList.contains("active") ? "SEG aktiviert: " + text : "SEG deaktiviert: " + text)
+      const text=btn.innerText.trim()
+      logEvent(btn.classList.contains("active")?"SEG aktiviert: "+text:"SEG deaktiviert: "+text)
       saveState()
     }
-    // Drag: SEG-Button in Bereich ziehen
     btn.setAttribute("draggable","true")
-    btn.addEventListener("dragstart", e=>{
-      btn._wasDragged = true
-      dragged = btn
-      e.dataTransfer.effectAllowed = "move"
+    btn.addEventListener("dragstart",e=>{
+      btn._wasDragged=true; dragged=btn; e.dataTransfer.effectAllowed="move"
     })
-    btn.addEventListener("dragend", ()=>{
-      dragged = null
-    })
+    btn.addEventListener("dragend",()=>{ dragged=null })
   })
-  // Bereiche als Drop-Ziele für SEG-Buttons
   document.querySelectorAll(".bereich, #zufahrt").forEach(area=>{
-    area.addEventListener("dragover", e=>{
-      if(dragged && dragged.classList.contains("seg")){
-        e.preventDefault()
-        e.dataTransfer.dropEffect = "move"
-      }
+    area.addEventListener("dragover",e=>{
+      if(dragged&&dragged.classList.contains("seg")){ e.preventDefault(); e.dataTransfer.dropEffect="move" }
     })
-    area.addEventListener("drop", e=>{
-      if(!dragged || !dragged.classList.contains("seg")) return
-      e.preventDefault()
-      e.stopPropagation()
-      const segName = dragged.innerText.trim()
-      // Entferne alten Standort-Badge falls vorhanden
-      area.querySelectorAll(".seg-badge").forEach(b=>{ if(b.dataset.seg===segName) b.remove() })
-      // Füge Badge in Bereich ein
-      const badge = document.createElement("div")
-      badge.className = "seg-badge"
-      badge.dataset.seg = segName
-      badge.innerHTML = segName + ' <span class="seg-badge-remove" onclick="this.parentElement.remove();saveState()">×</span>'
-      // Vor der Drop-Zone einfügen
-      const drop = area.classList.contains("drop") ? area : area.querySelector(".drop")
-      if(drop) area.insertBefore(badge, drop)
-      else area.appendChild(badge)
-      logEvent("SEG zugewiesen: " + segName + " → " + (area.querySelector(".bheader,.abschnittName")?.innerText?.trim() || area.id || "Bereich"))
+    area.addEventListener("drop",e=>{
+      if(!dragged||!dragged.classList.contains("seg")) return
+      e.preventDefault(); e.stopPropagation()
+      const segName=dragged.innerText.trim()
+      // Entferne vorhandene Badge dieses SEG aus allen Bereichen
+      document.querySelectorAll(".seg-badge").forEach(b=>{ if(b.dataset.seg===segName) b.remove() })
+      const badge=document.createElement("div")
+      badge.className="seg-badge"; badge.dataset.seg=segName
+      badge.draggable=true
+      badge.addEventListener("dragstart",ev=>{ dragged=badge; ev.dataTransfer.effectAllowed="move" })
+      badge.addEventListener("dragend",()=>{ dragged=null })
+      badge.innerHTML=segName+' <span class="seg-badge-remove" onclick="this.parentElement.remove();saveState()">×</span>'
+      const drop=area.classList.contains("drop")?area:area.querySelector(".drop")
+      if(drop) area.insertBefore(badge,drop); else area.appendChild(badge)
+      logEvent("SEG zugewiesen: "+segName+" → "+(area.querySelector(".bheader,.abschnittName")?.innerText?.trim()||area.id||"Bereich"))
       saveState()
     })
+  })
+  // segButtons als Rückgabe-Ziel
+  document.querySelector(".segButtons")?.addEventListener("dragover",e=>{
+    if(dragged&&(dragged.classList.contains("seg")||dragged.classList.contains("seg-badge"))){ e.preventDefault() }
+  })
+  document.querySelector(".segButtons")?.addEventListener("drop",e=>{
+    if(!dragged) return
+    const segName=dragged.dataset.seg||dragged.innerText.trim()
+    if(!segName) return
+    e.preventDefault()
+    // Entferne Badge aus Bereichen
+    document.querySelectorAll(".seg-badge").forEach(b=>{ if(b.dataset.seg===segName) b.remove() })
+    logEvent("SEG zurück: "+segName)
+    saveState()
   })
   document.querySelectorAll(".unit").forEach(h=>{
     h.onclick=()=>{
       h.classList.toggle("active")
-      const text = h.innerText.trim()
-      logEvent(h.classList.contains("active") ? "Bereich aktiviert: " + text : "Bereich deaktiviert: " + text)
+      const text=h.innerText.trim()
+      logEvent(h.classList.contains("active")?"Bereich aktiviert: "+text:"Bereich deaktiviert: "+text)
       saveState()
     }
   })
@@ -435,9 +437,8 @@ function sendFunk(){
 
 /* PATIENTEN */
 function initPatients(){
-  // SK-Schnellbuttons in alle Bereiche einfügen (außer Zufahrt)
   document.querySelectorAll(".bereich").forEach(b=>{
-    if(!b.classList.contains("zufahrtContainer")) addSkButtons(b)
+    if(!b.classList.contains("zufahrtContainer") && !b.classList.contains("bergetrupp")) addSkButtons(b)
   })
   document.querySelectorAll(".patients").forEach(el=>{
     el.onclick=(e)=>{
@@ -472,32 +473,54 @@ function patientAction(action){
         currentPatientBox.dataset.sichtung=currentSichtung
         logEvent("Patienten angelegt: "+amount+" ("+currentSichtung+")")
       }else{ logEvent("Patienten angelegt: "+amount) }
-      // Demografie erfassen
       const me=parseInt(document.getElementById("dem_m_erw")?.value)||0
       const we=parseInt(document.getElementById("dem_w_erw")?.value)||0
       const mk=parseInt(document.getElementById("dem_m_kind")?.value)||0
       const wk=parseInt(document.getElementById("dem_w_kind")?.value)||0
       if(me||we||mk||wk){
         demografieLog.push({m_erw:me,w_erw:we,m_kind:mk,w_kind:wk,sk:currentSichtung||"",ts:new Date().toLocaleTimeString()})
-        ;["dem_m_erw","dem_w_erw","dem_m_kind","dem_w_kind"].forEach(id=>{ const el=document.getElementById(id); if(el) el.value="" })
+        ;["dem_m_erw","dem_w_erw","dem_m_kind","dem_w_kind"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=""})
       }
     }else if(action==="DELETE"){
       let d=Math.min(amount,currentManual)
       currentPatientBox.dataset.manual=currentManual-d
       totalPatients=Math.max(0,totalPatients-d)
-      const ds=currentPatientBox.dataset.sichtung
-      if(ds&&sichtungCounts[ds]) sichtungCounts[ds]=Math.max(0,sichtungCounts[ds]-d)
-      logEvent("Patienten geloescht: "+d)
+      // SK-Zähler abziehen: gewählte SK oder SK des Bereichs
+      const skDel = currentSichtung || currentPatientBox.dataset.sichtung
+      if(skDel&&sichtungCounts[skDel]) sichtungCounts[skDel]=Math.max(0,sichtungCounts[skDel]-d)
+      const delBereich = currentPatientBox.closest(".bereich")
+      if(delBereich && skDel && delBereich._skCounts){
+        delBereich._skCounts[skDel]=Math.max(0,(delBereich._skCounts[skDel]||0)-d)
+        updateSkButtons(delBereich)
+      }
+      logEvent("Patienten geloescht: "+d+(skDel?" ("+skDel+")":""))
     }else if(action==="remove"||action==="RUECK"){
       currentPatientBox.dataset.manual=Math.max(0,currentManual-amount)
       logEvent(action==="RUECK"?"Patienten Rueckfuehrung: "+amount:"Patienten entfernt: "+amount)
     }else{
       if(currentManual<amount) return
       currentPatientBox.dataset.manual=currentManual-amount
+      // SK-Zähler im Quellbereich reduzieren
+      const quellBereich = currentPatientBox.closest(".bereich")
+      const skToMove = currentSichtung || null
+      if(quellBereich && skToMove && quellBereich._skCounts){
+        quellBereich._skCounts[skToMove] = Math.max(0,(quellBereich._skCounts[skToMove]||0)-amount)
+        updateSkButtons(quellBereich)
+      }
+      // Globale SK-Zähler: kein Ändern da Patient weiter existiert
       document.querySelectorAll(".patients").forEach(p=>{
-        if(p.dataset.unit===action){ p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount }
+        if(p.dataset.unit===action){
+          p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount
+          // SK-Zähler im Zielbereich erhöhen
+          const zielBereich = p.closest(".bereich")
+          if(zielBereich && skToMove){
+            zielBereich._skCounts = zielBereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
+            zielBereich._skCounts[skToMove] = (zielBereich._skCounts[skToMove]||0)+amount
+            updateSkButtons(zielBereich)
+          }
+        }
       })
-      logEvent("Patienten umverteilt -> "+action+": "+amount)
+      logEvent("Patienten umverteilt"+(skToMove?" ("+skToMove+")":"")+" -> "+action+": "+amount)
     }
   }else{
     let current=parseInt(currentPatientBox.innerText)||0
@@ -580,69 +603,63 @@ function updatePatients(){
   updateDashboard()
 }
 
-
 /* =========================================================
    SCHNELL-SICHTUNG
 ========================================================= */
-function schnellSichtung(bereich, sk){
-  const field = bereich.querySelector(".patients")
+function schnellSichtung(bereich, sk, delta){
+  delta = delta||1
+  const field=bereich.querySelector(".patients")
   if(!field) return
-  const prev = parseInt(field.dataset.manual||"0")||0
-  field.dataset.manual = prev + 1
-  sichtungCounts[sk] = (sichtungCounts[sk]||0) + 1
-  // SK-Zähler im Bereich erhöhen
-  const counts = bereich._skCounts = bereich._skCounts || {SK1:0,SK2:0,SK3:0,SK4:0}
-  counts[sk] = (counts[sk]||0) + 1
+  // Nicht unter 0
+  const prevManual=parseInt(field.dataset.manual||"0")||0
+  if(delta<0 && prevManual<=0) return
+  field.dataset.manual=Math.max(0,prevManual+delta)
+  sichtungCounts[sk]=Math.max(0,(sichtungCounts[sk]||0)+delta)
+  bereich._skCounts=bereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
+  bereich._skCounts[sk]=Math.max(0,(bereich._skCounts[sk]||0)+delta)
   updateSkButtons(bereich)
   updatePatients()
-  logEvent("Schnell-SK: +" + sk + " in " + (bereich.querySelector(".bheader,.abschnittName")?.innerText||"Bereich"))
+  logEvent("Schnell-SK: "+(delta>0?"+":"")+delta+" "+sk+" in "+(bereich.querySelector(".bheader,.abschnittName")?.innerText||"Bereich"))
   saveState()
 }
-
 function updateSkButtons(bereich){
-  const counts = bereich._skCounts || {SK1:0,SK2:0,SK3:0,SK4:0}
+  const counts=bereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
   bereich.querySelectorAll(".sk-btn").forEach(btn=>{
-    const sk = btn.dataset.sk
-    const n = counts[sk]||0
-    btn.innerHTML = btn.dataset.lbl + (n>0 ? ": <b>"+n+"</b>" : "")
-    btn.classList.toggle("has-count", n>0)
+    const n=counts[btn.dataset.sk]||0
+    btn.innerHTML=n>0?"<b>"+n+"</b>":"&nbsp;"
+    btn.classList.toggle("has-count",n>0)
   })
 }
-
-/* =========================================================
-   SICHTUNGSKLASSE KORRIGIEREN
-========================================================= */
-function sichtungKorrigieren(bereich, alteSK, neueSK){
-  if(alteSK === neueSK) return
-  // Alte SK -1, neue SK +1, Gesamtzahl bleibt gleich
-  if(alteSK && sichtungCounts[alteSK] > 0) sichtungCounts[alteSK]--
-  sichtungCounts[neueSK] = (sichtungCounts[neueSK]||0) + 1
-  updatePatients()
-  logEvent("SK korrigiert: " + alteSK + " → " + neueSK)
-  saveState()
-}
-
-
 function addSkButtons(bereich){
-  if(bereich.querySelector(".sk-buttons")) return // schon drin
-  const div = document.createElement("div")
-  div.className = "sk-buttons"
-  const btns = [
-    {cls:'sk1',lbl:'R',  sk:'SK1',title:'SK1 Rot'},
-    {cls:'sk2',lbl:'G',  sk:'SK2',title:'SK2 Gelb'},
-    {cls:'sk3',lbl:'Gr', sk:'SK3',title:'SK3 Grün'},
-    {cls:'sk4',lbl:'Sw', sk:'SK4',title:'SK4 Schwarz'},
+  if(bereich.querySelector(".sk-buttons")) return
+  const div=document.createElement("div")
+  div.className="sk-buttons"
+  const btns=[
+    {cls:"sk1",lbl:"R",  sk:"SK1",title:"SK1 Rot"},
+    {cls:"sk2",lbl:"G",  sk:"SK2",title:"SK2 Gelb"},
+    {cls:"sk3",lbl:"Gr", sk:"SK3",title:"SK3 Grün"},
+    {cls:"sk4",lbl:"Sw", sk:"SK4",title:"SK4 Schwarz"},
   ]
-  div.innerHTML = btns.map(b=>
-    `<button class="sk-btn ${b.cls}" title="${b.title}" data-sk="${b.sk}" data-lbl="${b.lbl}">${b.lbl}</button>`
-  ).join('')
-  div.querySelectorAll('.sk-btn').forEach(btn=>{
-    btn.addEventListener('click', e=>{
+  div.innerHTML=btns.map(b=>`<button class="sk-btn ${b.cls}" title="${b.title} (Klick +1, Rechtsklick -1)" data-sk="${b.sk}" data-lbl="">&nbsp;</button>`).join("")
+  div.querySelectorAll(".sk-btn").forEach(btn=>{
+    btn.addEventListener("click",e=>{
       e.stopPropagation()
-      schnellSichtung(btn.closest('.bereich'), btn.dataset.sk)
+      schnellSichtung(btn.closest(".bereich"),btn.dataset.sk,1)
+    })
+    btn.addEventListener("contextmenu",e=>{
+      e.preventDefault(); e.stopPropagation()
+      schnellSichtung(btn.closest(".bereich"),btn.dataset.sk,-1)
     })
   })
   bereich.appendChild(div)
+}
+function sichtungKorrigieren(bereich,alteSK,neueSK){
+  if(alteSK===neueSK) return
+  if(alteSK&&sichtungCounts[alteSK]>0) sichtungCounts[alteSK]--
+  sichtungCounts[neueSK]=(sichtungCounts[neueSK]||0)+1
+  updatePatients()
+  logEvent("SK korrigiert: "+alteSK+" → "+neueSK)
+  saveState()
 }
 
 /* SICHERHEIT: Fahrzeuge/FK bei Bereich-Loeschen zurueck in Zufahrt */
@@ -867,7 +884,6 @@ async function einsatzAusDateiLaden(){
     if(data.sichtungCounts) sichtungCounts = data.sichtungCounts
     if(data.alarmstufen)    alarmstufen    = data.alarmstufen
     if(data.log)            eventLog       = data.log
-    if(data.demografieLog)  demografieLog = data.demografieLog
     if(data.tagebuch)       { tagebuch = data.tagebuch; const el=document.getElementById("tagebuchLetzter"); if(el&&tagebuch.length) el.textContent=tagebuch[tagebuch.length-1] }
     if(data.theme)          document.documentElement.setAttribute("data-theme", data.theme)
 
@@ -987,7 +1003,6 @@ function tagebuchSenden(){
 
   inp.value = ""
   logEvent("Tagebuch: " + text)
-  // Immer in localStorage sichern, unabhaengig ob Einsatz aktiv
   try{ localStorage.setItem("tagebuch", JSON.stringify(tagebuch)) }catch{}
   saveState()
 }
@@ -996,14 +1011,9 @@ document.addEventListener("DOMContentLoaded", ()=>{
   document.getElementById("tagebuchInput")?.addEventListener("keydown", e=>{
     if(e.key === "Enter"){ e.preventDefault(); tagebuchSenden() }
   })
-  // Letzten Eintrag aus localStorage wiederherstellen
   try{
-    const saved = localStorage.getItem("tagebuch")
-    if(saved){
-      tagebuch = JSON.parse(saved)
-      const el = document.getElementById("tagebuchLetzter")
-      if(el && tagebuch.length) el.textContent = tagebuch[tagebuch.length-1]
-    }
+    const saved=localStorage.getItem("tagebuch")
+    if(saved){ tagebuch=JSON.parse(saved); const el=document.getElementById("tagebuchLetzter"); if(el&&tagebuch.length) el.textContent=tagebuch[tagebuch.length-1] }
   }catch{}
 })
 
