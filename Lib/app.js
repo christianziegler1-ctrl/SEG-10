@@ -864,7 +864,7 @@ function updateDashboard(){
     }
   })
   const hasDem=totMe||totWe||totMk||totWk
-  patRows+='<br><span class="dash-dem"><span class="dash-dem-val">♂E <b>'+totMe+'</b></span> <span class="dash-dem-val">♀E <b>'+totWe+'</b></span> <span class="dash-dem-val">♂K <b>'+totMk+'</b></span> <span class="dash-dem-val">♀K <b>'+totWk+'</b></span></span>'
+  patRows+='<br><span class="dash-dem">♂E:'+totMe+' ♀E:'+totWe+' ♂K:'+totMk+' ♀K:'+totWk+'</span>'
   document.getElementById("dashPatients").innerHTML=patRows
   syncToFirebase()
 }
