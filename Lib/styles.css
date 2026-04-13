@@ -220,7 +220,7 @@ header {
   border-radius: 8px;
   margin-top: 9px;
   min-height: 84px;
-  padding: 10px 10px 36px 12px;
+  padding: 10px 10px 58px 12px;
   position: relative;
   overflow: visible;
   transition: border-color 0.2s, background 0.25s;
@@ -1502,11 +1502,10 @@ header {
   left: 0;
   right: 0;
   display: flex;
-  flex-direction: row-reverse;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 6px;
-  gap: 4px;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 3px 6px 4px 6px;
+  gap: 3px;
   background: rgba(0,0,0,0.03);
   border-top: 1px solid var(--border);
   border-radius: 0 0 7px 7px;
@@ -1515,11 +1514,13 @@ header {
   display: flex;
   gap: 3px;
   flex-wrap: nowrap;
+  justify-content: flex-end;
 }
 .dem-buttons {
   display: flex;
   gap: 3px;
   flex-wrap: nowrap;
+  justify-content: flex-start;
 }
 .dem-btn {
   min-width: 26px;
