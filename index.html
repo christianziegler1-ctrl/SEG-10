@@ -219,31 +219,26 @@
       <button class="sichtBtn sk4" onclick="setSichtung('SK4')">SK4</button>
       <span id="sichtungLabel" class="sichtungLabel">–</span>
     </div>
+
+    <div class="popupButtons">
+      <button onclick="patientAction('add')">Anlegen</button>
+      <button onclick="patientAction('21')">SEG-21</button>
+      <button onclick="patientAction('22')">SEG-22</button>
+      <button onclick="patientAction('EVAK')">EVAK</button>
+      <button onclick="patientAction('TRANSPORT')">Transport</button>
+      <button onclick="patientAction('remove')">Transport beendet</button>
+      <button onclick="patientAction('RUECK')">Rückführung</button>
+      <button onclick="patientAction('DELETE')">Löschen</button>
+      <button onclick="toggleVehicleSelect()">Fahrzeug</button>
+      <button onclick="closePopup()">Schließen</button>
     </div>
-<button onclick="patientAction('add')">Anlegen</button>
-<button onclick="patientAction('21')">SEG-21</button>
-<button onclick="patientAction('22')">SEG-22</button>
-<button onclick="patientAction('EVAK')">EVAK</button>
-<button onclick="patientAction('TRANSPORT')">Transport</button>
-<button onclick="patientAction('remove')">Transport beendet</button>
-<button onclick="patientAction('RUECK')">Rückführung</button>
-<button onclick="patientAction('DELETE')">Löschen</button>
 
-<button onclick="toggleVehicleSelect()">Fahrzeug</button>
-<button onclick="closePopup()">Schließen</button>
-</div>
+    <div id="vehicleSelectBox" style="display:none;margin-top:10px">
+      <select id="vehicleSelect" style="width:100%"></select>
+      <button onclick="assignPatientsToVehicle()" style="margin-top:6px;width:100%">Patienten Fahrzeug zuweisen</button>
+    </div>
 
-<div id="vehicleSelectBox" style="display:none;margin-top:10px">
-<select id="vehicleSelect" style="width:100%"></select>
-
-<button onclick="assignPatientsToVehicle()" style="margin-top:6px;width:100%">
-Patienten Fahrzeug zuweisen
-</button>
-</div>
-
-
-</div>
-
+  </div>
 </div>
 
 
