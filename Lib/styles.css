@@ -477,7 +477,8 @@ header {
 .dash-sk2 { color: #c47000; font-weight: 700; }
 .dash-sk3 { color: #1a7a52; font-weight: 700; }
 .dash-sk4 { color: var(--text-dim); font-weight: 600; }
-.dash-dem { color: var(--text-primary); font-size: 12px; font-weight: 700; letter-spacing: 0.3px; }
+.dash-dem { color: var(--text-primary); font-size: 12px; font-weight: 700; letter-spacing: 0.3px; display: inline-flex; gap: 6px; flex-wrap: nowrap; }
+.dash-dem-val { white-space: nowrap; }
 
 /* =========================================================
    ZUFAHRT
@@ -1520,9 +1521,9 @@ header {
   flex-wrap: nowrap;
 }
 .dem-btn {
-  min-width: 22px;
+  min-width: 26px;
   height: 18px;
-  padding: 0 4px;
+  padding: 0 5px;
   font-size: 10px;
   border: none;
   border-radius: 3px;
@@ -1536,6 +1537,7 @@ header {
   transition: all 0.12s;
   user-select: none;
   white-space: nowrap;
+  gap: 2px;
 }
 .dem-btn:active { transform: scale(0.88); }
 .dem-btn.has-count { min-width: 24px; }

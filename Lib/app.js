@@ -540,22 +540,46 @@ function patientAction(action){
     }else{
       if(currentManual<amount) return
       currentPatientBox.dataset.manual=currentManual-amount
-      // SK-Zähler im Quellbereich reduzieren
       const quellBereich = currentPatientBox.closest(".bereich")
-      const skToMove = currentSichtung || null
-      if(quellBereich && skToMove && quellBereich._skCounts){
-        quellBereich._skCounts[skToMove] = Math.max(0,(quellBereich._skCounts[skToMove]||0)-amount)
+      // SK-Verteilung aus Quellbereich proportional übertragen
+      // Wenn currentSichtung gesetzt → nur diese SK verschieben
+      // Sonst → proportional aus _skCounts des Quellbereichs
+      const skMoves = {} // {SK1: n, SK2: n, ...} was wirklich verschoben wird
+      if(currentSichtung){
+        skMoves[currentSichtung] = amount
+      } else if(quellBereich && quellBereich._skCounts){
+        const counts = quellBereich._skCounts
+        const total = Object.values(counts).reduce((a,b)=>a+b,0)
+        if(total > 0){
+          let remaining = amount
+          const sks = ["SK1","SK2","SK3","SK4"]
+          sks.forEach((sk,i)=>{
+            const n = counts[sk]||0
+            if(n===0) return
+            const share = i===sks.length-1 ? remaining : Math.round(amount * n / total)
+            const actual = Math.min(share, n, remaining)
+            if(actual>0){ skMoves[sk]=actual; remaining-=actual }
+          })
+        }
+      }
+      // Quellbereich SK abziehen
+      if(quellBereich){
+        Object.entries(skMoves).forEach(([sk,n])=>{
+          quellBereich._skCounts = quellBereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
+          quellBereich._skCounts[sk] = Math.max(0,(quellBereich._skCounts[sk]||0)-n)
+        })
         updateSkButtons(quellBereich)
       }
-      // Globale SK-Zähler: kein Ändern da Patient weiter existiert
+      // Zielbereich SK addieren
       document.querySelectorAll(".patients").forEach(p=>{
         if(p.dataset.unit===action){
           p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount
-          // SK-Zähler im Zielbereich erhöhen
           const zielBereich = p.closest(".bereich")
-          if(zielBereich && skToMove){
+          if(zielBereich){
             zielBereich._skCounts = zielBereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
-            zielBereich._skCounts[skToMove] = (zielBereich._skCounts[skToMove]||0)+amount
+            Object.entries(skMoves).forEach(([sk,n])=>{
+              zielBereich._skCounts[sk] = (zielBereich._skCounts[sk]||0)+n
+            })
             updateSkButtons(zielBereich)
           }
         }
@@ -720,8 +744,8 @@ function addSkButtons(bereich){
     btn.addEventListener("click",e=>{ e.stopPropagation(); schnellDemografie(btn.closest(".bereich"),btn.dataset.dem,1) })
     btn.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); schnellDemografie(btn.closest(".bereich"),btn.dataset.dem,-1) })
   })
-  bar.appendChild(skDiv)
   bar.appendChild(demDiv)
+  bar.appendChild(skDiv)
   bereich.appendChild(bar)
 }
 
@@ -739,7 +763,7 @@ function updateDemButtons(bereich){
   bereich.querySelectorAll(".dem-btn").forEach(btn=>{
     const n=c[btn.dataset.dem]||0
     const lbl=labels[btn.dataset.dem]||""
-    btn.innerHTML = n>0 ? lbl+" <b>"+n+"</b>" : lbl
+    btn.innerHTML = n>0 ? '<span>'+lbl+'</span><b>'+n+'</b>' : lbl
     btn.classList.toggle("has-count",n>0)
   })
 }
@@ -840,7 +864,7 @@ function updateDashboard(){
     }
   })
   const hasDem=totMe||totWe||totMk||totWk
-  patRows+='<br><span class="dash-dem">♂E:<b>'+totMe+'</b> ♀E:<b>'+totWe+'</b> ♂K:<b>'+totMk+'</b> ♀K:<b>'+totWk+'</b></span>'
+  patRows+='<br><span class="dash-dem"><span class="dash-dem-val">♂E <b>'+totMe+'</b></span> <span class="dash-dem-val">♀E <b>'+totWe+'</b></span> <span class="dash-dem-val">♂K <b>'+totMk+'</b></span> <span class="dash-dem-val">♀K <b>'+totWk+'</b></span></span>'
   document.getElementById("dashPatients").innerHTML=patRows
   syncToFirebase()
 }
