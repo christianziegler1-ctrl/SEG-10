@@ -121,7 +121,7 @@ function initDrag(){
       }
       const itemName = dragged.dataset.fkName || dragged.children[2]?.innerText || dragged.children[1]?.innerText || "Element"
       const ziel = area.querySelector(".bheader")?.innerText || area.querySelector(".abschnittName")?.value || (area.id==="zufahrt" ? "Zufahrt" : "Unbekannt")
-      // SK-Zähler beim Fahrzeug-Drag mitnehmen
+      // Lokale SK-Bereichszähler beim Fahrzeug-Drag anpassen (globaler sichtungCounts bleibt unberührt)
       if(dragged.classList.contains("vehicle")){
         const patBadge = dragged.querySelector(".patBadge")
         const patAnz = patBadge ? (parseInt(patBadge.innerText)||0) : 0
@@ -129,17 +129,14 @@ function initDrag(){
           const quellBereich = dragged.closest(".bereich")
           const zielBereich = area.classList.contains("bereich") ? area : null
           const sk = dragged.dataset.lastSk || null
-          // Transport-Ziel: SK aus globalem Zähler abziehen (Patient verlässt Behandlungszone)
-          const isTransport = area.querySelector('[data-unit="TRANSPORT"]') !== null || area.dataset.unit==="TRANSPORT"
           if(sk){
+            // Quellbereich: SK runter
             if(quellBereich && quellBereich._skCounts){
               quellBereich._skCounts[sk] = Math.max(0,(quellBereich._skCounts[sk]||0)-patAnz)
               updateSkButtons(quellBereich)
             }
-            // Globalen SK-Zähler nur beim Transport reduzieren
-            if(isTransport){
-              sichtungCounts[sk] = Math.max(0,(sichtungCounts[sk]||0)-patAnz)
-            } else if(zielBereich){
+            // Zielbereich: SK rauf (auch Transport)
+            if(zielBereich){
               zielBereich._skCounts = zielBereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
               zielBereich._skCounts[sk] = (zielBereich._skCounts[sk]||0)+patAnz
               updateSkButtons(zielBereich)
