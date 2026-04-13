@@ -477,7 +477,7 @@ header {
 .dash-sk2 { color: #c47000; font-weight: 700; }
 .dash-sk3 { color: #1a7a52; font-weight: 700; }
 .dash-sk4 { color: var(--text-dim); font-weight: 600; }
-.dash-dem { color: var(--text-primary); font-size: 12px; font-weight: 600; letter-spacing: 0.3px; }
+.dash-dem { color: var(--text-primary); font-size: 12px; font-weight: 700; letter-spacing: 0.3px; }
 
 /* =========================================================
    ZUFAHRT

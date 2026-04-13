@@ -110,8 +110,8 @@ function initDrag(){
     area.addEventListener("drop", e=>{
       e.preventDefault()
       if(!dragged) return
-      // SEG-Buttons und SEG-Badges haben eigenen Handler in initSEG → hier ignorieren
-      if(dragged.classList.contains("seg") || dragged.classList.contains("seg-badge")) return
+      // SEG-Elemente werden ausschließlich von initSEG behandelt
+      if(dragged._isSegProxy || dragged._isSegBadge) return
       let drop = area.querySelector(".drop")
       if(drop){
         drop.appendChild(dragged)
@@ -126,18 +126,24 @@ function initDrag(){
         const patBadge = dragged.querySelector(".patBadge")
         const patAnz = patBadge ? (parseInt(patBadge.innerText)||0) : 0
         if(patAnz > 0){
-          const quellBereich = dragged.parentElement?.closest(".bereich")
+          const quellBereich = dragged.closest(".bereich")
           const zielBereich = area.classList.contains("bereich") ? area : null
-          // Hole SK vom patBadge dataset
           const sk = dragged.dataset.lastSk || null
-          if(sk && quellBereich && quellBereich._skCounts){
-            quellBereich._skCounts[sk] = Math.max(0,(quellBereich._skCounts[sk]||0)-patAnz)
-            updateSkButtons(quellBereich)
-          }
-          if(sk && zielBereich){
-            zielBereich._skCounts = zielBereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
-            zielBereich._skCounts[sk] = (zielBereich._skCounts[sk]||0)+patAnz
-            updateSkButtons(zielBereich)
+          // Transport-Ziel: SK aus globalem Zähler abziehen (Patient verlässt Behandlungszone)
+          const isTransport = area.querySelector('[data-unit="TRANSPORT"]') !== null || area.dataset.unit==="TRANSPORT"
+          if(sk){
+            if(quellBereich && quellBereich._skCounts){
+              quellBereich._skCounts[sk] = Math.max(0,(quellBereich._skCounts[sk]||0)-patAnz)
+              updateSkButtons(quellBereich)
+            }
+            // Globalen SK-Zähler nur beim Transport reduzieren
+            if(isTransport){
+              sichtungCounts[sk] = Math.max(0,(sichtungCounts[sk]||0)-patAnz)
+            } else if(zielBereich){
+              zielBereich._skCounts = zielBereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
+              zielBereich._skCounts[sk] = (zielBereich._skCounts[sk]||0)+patAnz
+              updateSkButtons(zielBereich)
+            }
           }
         }
       }
@@ -311,7 +317,7 @@ function initSEG(){
       badge.className="seg-badge"; badge.dataset.seg=segName
       // Badge ist auch draggable (für Verschieben zwischen Bereichen)
       badge.draggable=true
-      badge.addEventListener("dragstart",ev=>{ dragged=badge; ev.dataTransfer.effectAllowed="move" })
+      badge.addEventListener("dragstart",ev=>{ ev.dataTransfer.effectAllowed="move"; dragged=badge; badge._isSegBadge=true })
       badge.addEventListener("dragend",()=>{ dragged=null })
       badge.innerHTML=segName+' <span class="seg-badge-remove" onclick="this.parentElement.remove();saveState()">×</span>'
       const drop=area.classList.contains("drop")?area:area.querySelector(".drop")
@@ -736,7 +742,7 @@ function updateDemButtons(bereich){
   bereich.querySelectorAll(".dem-btn").forEach(btn=>{
     const n=c[btn.dataset.dem]||0
     const lbl=labels[btn.dataset.dem]||""
-    btn.innerHTML = n>0 ? lbl+"<b>"+n+"</b>" : lbl
+    btn.innerHTML = n>0 ? lbl+" <b>"+n+"</b>" : lbl
     btn.classList.toggle("has-count",n>0)
   })
 }
@@ -837,7 +843,7 @@ function updateDashboard(){
     }
   })
   const hasDem=totMe||totWe||totMk||totWk
-  if(hasDem) patRows+='<br><span class="dash-dem">♂E:<b>'+totMe+'</b> ♀E:<b>'+totWe+'</b> ♂K:<b>'+totMk+'</b> ♀K:<b>'+totWk+'</b></span>'
+  patRows+='<br><span class="dash-dem">♂E:<b>'+totMe+'</b> ♀E:<b>'+totWe+'</b> ♂K:<b>'+totMk+'</b> ♀K:<b>'+totWk+'</b></span>'
   document.getElementById("dashPatients").innerHTML=patRows
   syncToFirebase()
 }
