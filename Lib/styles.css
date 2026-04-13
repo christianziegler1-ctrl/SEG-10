@@ -1363,8 +1363,10 @@ header {
 /* Abschnitte kompakter damit sie auf den Bildschirm passen */
 .abschnitt {
   font-size: clamp(10px,0.75vw,13px) !important;
-  padding-bottom: 34px;
+  padding-bottom: 52px;
 }
+.abschnitt .sk-buttons { bottom: 6px; right: 4px; }
+.abschnitt .dem-buttons { bottom: 28px; left: 4px; }
 .abschnitt .drop {
   min-height: clamp(40px,4vh,70px);
 }

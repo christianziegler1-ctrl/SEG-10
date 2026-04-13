@@ -774,6 +774,7 @@ function schnellDemografie(bereich, key, delta){
   bereich._demCounts = bereich._demCounts||{me:0,we:0,mk:0,wk:0}
   bereich._demCounts[key] = Math.max(0,(bereich._demCounts[key]||0)+delta)
   updateDemButtons(bereich)
+  updateDashboard()
   saveState()
 }
 
