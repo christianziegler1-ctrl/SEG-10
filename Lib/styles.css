@@ -1365,21 +1365,6 @@ header {
   font-size: clamp(10px,0.75vw,13px) !important;
   padding-bottom: 34px;
 }
-.abschnitt .sk-btn {
-  min-width: 14px;
-  height: 15px;
-  font-size: 8px;
-  padding: 0 1px;
-}
-.abschnitt .dem-btn {
-  min-width: 14px;
-  height: 15px;
-  font-size: 8px;
-  padding: 0 1px;
-}
-.abschnitt .sk-buttons { gap: 2px; }
-.abschnitt .dem-buttons { gap: 2px; }
-.abschnitt .bereich-bottom-bar { gap: 2px; padding: 3px 3px; }
 .abschnitt .drop {
   min-height: clamp(40px,4vh,70px);
 }
@@ -1513,36 +1498,27 @@ header {
    SCHNELL-SICHTUNG BUTTONS
 ========================================================= */
 .bereich-bottom-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 6px;
-  gap: 4px;
-  background: rgba(0,0,0,0.03);
-  border-top: 1px solid var(--border);
-  border-radius: 0 0 7px 7px;
+  display: none; /* nicht mehr verwendet */
 }
 .sk-buttons {
   display: flex;
   gap: 3px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
 }
 .dem-buttons {
   display: flex;
   gap: 3px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
 }
-/* Abschnitte: gleiche Zeile, aber Buttons etwas kleiner */
-.abschnitt .bereich-bottom-bar {
-  padding: 3px 4px;
-}
-.abschnitt .sk-buttons { justify-content: flex-end; }
-.abschnitt .dem-buttons { justify-content: flex-start; }
+/* Abschnitte: gleiche Größe, passt absolut */
+.abschnitt .sk-buttons { bottom: 6px; right: 4px; }
+.abschnitt .dem-buttons { bottom: 6px; left: 4px; }
 .dem-btn {
   min-width: 26px;
   height: 18px;

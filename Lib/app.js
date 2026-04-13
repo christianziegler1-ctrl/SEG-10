@@ -736,10 +736,7 @@ function updateSkButtons(bereich){
 }
 function addSkButtons(bereich){
   if(bereich.querySelector(".sk-buttons")) return
-  // Gemeinsamer Container für SK + Demografie nebeneinander
-  const bar=document.createElement("div")
-  bar.className="bereich-bottom-bar"
-  // SK-Buttons
+  // SK-Buttons — absolut rechts unten
   const skDiv=document.createElement("div")
   skDiv.className="sk-buttons"
   const skBtns=[
@@ -753,7 +750,8 @@ function addSkButtons(bereich){
     btn.addEventListener("click",e=>{ e.stopPropagation(); schnellSichtung(btn.closest(".bereich"),btn.dataset.sk,1) })
     btn.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); schnellSichtung(btn.closest(".bereich"),btn.dataset.sk,-1) })
   })
-  // Demografie-Buttons
+  bereich.appendChild(skDiv)
+  // Demografie-Buttons — absolut links unten
   const demDiv=document.createElement("div")
   demDiv.className="dem-buttons"
   const demBtns=[
@@ -768,9 +766,7 @@ function addSkButtons(bereich){
     btn.addEventListener("click",e=>{ e.stopPropagation(); schnellDemografie(btn.closest(".bereich"),btn.dataset.dem,1) })
     btn.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); schnellDemografie(btn.closest(".bereich"),btn.dataset.dem,-1) })
   })
-  bar.appendChild(demDiv)
-  bar.appendChild(skDiv)
-  bereich.appendChild(bar)
+  bereich.appendChild(demDiv)
 }
 
 function schnellDemografie(bereich, key, delta){
