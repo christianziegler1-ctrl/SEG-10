@@ -1366,17 +1366,20 @@ header {
   padding-bottom: 34px;
 }
 .abschnitt .sk-btn {
-  min-width: 16px;
-  height: 17px;
-  font-size: 9px;
-  padding: 0 2px;
+  min-width: 14px;
+  height: 15px;
+  font-size: 8px;
+  padding: 0 1px;
 }
 .abschnitt .dem-btn {
-  min-width: 16px;
-  height: 17px;
-  font-size: 9px;
-  padding: 0 2px;
+  min-width: 14px;
+  height: 15px;
+  font-size: 8px;
+  padding: 0 1px;
 }
+.abschnitt .sk-buttons { gap: 2px; }
+.abschnitt .dem-buttons { gap: 2px; }
+.abschnitt .bereich-bottom-bar { gap: 2px; padding: 3px 3px; }
 .abschnitt .drop {
   min-height: clamp(40px,4vh,70px);
 }

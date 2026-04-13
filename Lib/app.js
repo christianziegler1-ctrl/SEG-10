@@ -646,8 +646,26 @@ function assignPatientsToVehicle(){
     currentPatientBox.dataset.manual=cm-amount
     // SK-Zähler im Quellbereich abziehen
     const quellBereich = currentPatientBox.closest(".bereich")
-    if(quellBereich && currentSichtung && quellBereich._skCounts){
-      quellBereich._skCounts[currentSichtung] = Math.max(0,(quellBereich._skCounts[currentSichtung]||0)-amount)
+    if(quellBereich){
+      quellBereich._skCounts = quellBereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
+      if(currentSichtung){
+        // Konkrete SK ausgewählt → direkt abziehen
+        quellBereich._skCounts[currentSichtung] = Math.max(0,(quellBereich._skCounts[currentSichtung]||0)-amount)
+      } else {
+        // Keine SK ausgewählt → proportional aus _skCounts abziehen
+        const counts = quellBereich._skCounts
+        const total = Object.values(counts).reduce((a,b)=>a+b,0)
+        if(total > 0){
+          let remaining = amount
+          ;["SK1","SK2","SK3","SK4"].forEach((sk,i,arr)=>{
+            const n = counts[sk]||0
+            if(n===0) return
+            const share = i===arr.length-1 ? remaining : Math.min(Math.round(amount*n/total), n, remaining)
+            counts[sk] = Math.max(0, n - share)
+            remaining -= share
+          })
+        }
+      }
       updateSkButtons(quellBereich)
     }
   }else{
