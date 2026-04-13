@@ -220,7 +220,7 @@ header {
   border-radius: 8px;
   margin-top: 9px;
   min-height: 84px;
-  padding: 10px 10px 58px 12px;
+  padding: 10px 10px 34px 12px;
   position: relative;
   overflow: visible;
   transition: border-color 0.2s, background 0.25s;
@@ -1363,6 +1363,7 @@ header {
 /* Abschnitte kompakter damit sie auf den Bildschirm passen */
 .abschnitt {
   font-size: clamp(10px,0.75vw,13px) !important;
+  padding-bottom: 54px;
 }
 .abschnitt .drop {
   min-height: clamp(40px,4vh,70px);
@@ -1502,10 +1503,11 @@ header {
   left: 0;
   right: 0;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  padding: 3px 6px 4px 6px;
-  gap: 3px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  gap: 4px;
   background: rgba(0,0,0,0.03);
   border-top: 1px solid var(--border);
   border-radius: 0 0 7px 7px;
@@ -1514,14 +1516,21 @@ header {
   display: flex;
   gap: 3px;
   flex-wrap: nowrap;
-  justify-content: flex-end;
 }
 .dem-buttons {
   display: flex;
   gap: 3px;
   flex-wrap: nowrap;
-  justify-content: flex-start;
 }
+/* Abschnitte sind schmal → Buttons übereinander */
+.abschnitt .bereich-bottom-bar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  padding: 3px 6px 4px 6px;
+}
+.abschnitt .sk-buttons { justify-content: flex-end; }
+.abschnitt .dem-buttons { justify-content: flex-start; }
 .dem-btn {
   min-width: 26px;
   height: 18px;

@@ -644,6 +644,12 @@ function assignPatientsToVehicle(){
     let cm=parseInt(currentPatientBox.dataset.manual||"0")||0
     if(cm<amount) return
     currentPatientBox.dataset.manual=cm-amount
+    // SK-Zähler im Quellbereich abziehen
+    const quellBereich = currentPatientBox.closest(".bereich")
+    if(quellBereich && currentSichtung && quellBereich._skCounts){
+      quellBereich._skCounts[currentSichtung] = Math.max(0,(quellBereich._skCounts[currentSichtung]||0)-amount)
+      updateSkButtons(quellBereich)
+    }
   }else{
     let c=parseInt(currentPatientBox.innerText)||0
     if(c<amount) return
