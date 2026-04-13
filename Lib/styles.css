@@ -1363,7 +1363,19 @@ header {
 /* Abschnitte kompakter damit sie auf den Bildschirm passen */
 .abschnitt {
   font-size: clamp(10px,0.75vw,13px) !important;
-  padding-bottom: 54px;
+  padding-bottom: 34px;
+}
+.abschnitt .sk-btn {
+  min-width: 16px;
+  height: 17px;
+  font-size: 9px;
+  padding: 0 2px;
+}
+.abschnitt .dem-btn {
+  min-width: 16px;
+  height: 17px;
+  font-size: 9px;
+  padding: 0 2px;
 }
 .abschnitt .drop {
   min-height: clamp(40px,4vh,70px);
@@ -1522,12 +1534,9 @@ header {
   gap: 3px;
   flex-wrap: nowrap;
 }
-/* Abschnitte sind schmal → Buttons übereinander */
+/* Abschnitte: gleiche Zeile, aber Buttons etwas kleiner */
 .abschnitt .bereich-bottom-bar {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 3px;
-  padding: 3px 6px 4px 6px;
+  padding: 3px 4px;
 }
 .abschnitt .sk-buttons { justify-content: flex-end; }
 .abschnitt .dem-buttons { justify-content: flex-start; }
