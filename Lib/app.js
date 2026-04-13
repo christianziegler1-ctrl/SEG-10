@@ -269,11 +269,12 @@ function initSEG(){
     area.addEventListener("drop",e=>{
       if(!dragged||!dragged.classList.contains("seg")) return
       e.preventDefault(); e.stopPropagation()
-      const segName=dragged.innerText.trim()
-      // Entferne vorhandene Badge dieses SEG aus allen Bereichen
+      const segName=dragged.dataset.seg||dragged.innerText.trim()
+      // Entferne evtl. vorhandene Badge dieses SEG aus anderen Bereichen (nicht das Original)
       document.querySelectorAll(".seg-badge").forEach(b=>{ if(b.dataset.seg===segName) b.remove() })
       const badge=document.createElement("div")
       badge.className="seg-badge"; badge.dataset.seg=segName
+      // Badge ist auch draggable (für Verschieben zwischen Bereichen)
       badge.draggable=true
       badge.addEventListener("dragstart",ev=>{ dragged=badge; ev.dataTransfer.effectAllowed="move" })
       badge.addEventListener("dragend",()=>{ dragged=null })
@@ -290,10 +291,11 @@ function initSEG(){
   })
   document.querySelector(".segButtons")?.addEventListener("drop",e=>{
     if(!dragged) return
-    const segName=dragged.dataset.seg||dragged.innerText.trim()
+    // Nur Badge entfernen, nie das Original (.seg in .segButtons)
+    if(dragged.classList.contains("seg")) return
+    const segName=dragged.dataset.seg
     if(!segName) return
     e.preventDefault()
-    // Entferne Badge aus Bereichen
     document.querySelectorAll(".seg-badge").forEach(b=>{ if(b.dataset.seg===segName) b.remove() })
     logEvent("SEG zurück: "+segName)
     saveState()
@@ -532,10 +534,24 @@ function patientAction(action){
       if(current<amount) return
       currentPatientBox.innerText=current-amount
       if((parseInt(currentPatientBox.innerText)||0)===0) currentPatientBox.remove()
+      // SK vom Fahrzeug-Quellbereich in Zielbereich übertragen
+      const vehBereich=currentPatientBox.closest(".bereich")
+      const skMove=currentSichtung||null
       document.querySelectorAll(".patients").forEach(p=>{
-        if(p.dataset.unit===action){ p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount }
+        if(p.dataset.unit===action){
+          p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount
+          // SK-Zähler im Zielbereich erhöhen
+          if(skMove){
+            const ziel=p.closest(".bereich")
+            if(ziel){ ziel._skCounts=ziel._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}; ziel._skCounts[skMove]=(ziel._skCounts[skMove]||0)+amount; updateSkButtons(ziel) }
+          }
+        }
       })
-      logEvent("Patienten vom Fahrzeug umverteilt -> "+action+": "+amount)
+      if(vehBereich&&skMove&&vehBereich._skCounts){
+        vehBereich._skCounts[skMove]=Math.max(0,(vehBereich._skCounts[skMove]||0)-amount)
+        updateSkButtons(vehBereich)
+      }
+      logEvent("Patienten vom Fahrzeug umverteilt"+(skMove?" ("+skMove+")":"")+" -> "+action+": "+amount)
     }
   }
   updatePatients(); closePopup(); saveState()
@@ -632,26 +648,55 @@ function updateSkButtons(bereich){
 }
 function addSkButtons(bereich){
   if(bereich.querySelector(".sk-buttons")) return
-  const div=document.createElement("div")
-  div.className="sk-buttons"
-  const btns=[
-    {cls:"sk1",lbl:"R",  sk:"SK1",title:"SK1 Rot"},
-    {cls:"sk2",lbl:"G",  sk:"SK2",title:"SK2 Gelb"},
-    {cls:"sk3",lbl:"Gr", sk:"SK3",title:"SK3 Grün"},
-    {cls:"sk4",lbl:"Sw", sk:"SK4",title:"SK4 Schwarz"},
+  // SK-Buttons
+  const skDiv=document.createElement("div")
+  skDiv.className="sk-buttons"
+  const skBtns=[
+    {cls:"sk1",sk:"SK1",title:"SK1 Rot (Klick +1, Rechtsklick -1)"},
+    {cls:"sk2",sk:"SK2",title:"SK2 Gelb (Klick +1, Rechtsklick -1)"},
+    {cls:"sk3",sk:"SK3",title:"SK3 Grün (Klick +1, Rechtsklick -1)"},
+    {cls:"sk4",sk:"SK4",title:"SK4 Schwarz (Klick +1, Rechtsklick -1)"},
   ]
-  div.innerHTML=btns.map(b=>`<button class="sk-btn ${b.cls}" title="${b.title} (Klick +1, Rechtsklick -1)" data-sk="${b.sk}" data-lbl="">&nbsp;</button>`).join("")
-  div.querySelectorAll(".sk-btn").forEach(btn=>{
-    btn.addEventListener("click",e=>{
-      e.stopPropagation()
-      schnellSichtung(btn.closest(".bereich"),btn.dataset.sk,1)
-    })
-    btn.addEventListener("contextmenu",e=>{
-      e.preventDefault(); e.stopPropagation()
-      schnellSichtung(btn.closest(".bereich"),btn.dataset.sk,-1)
-    })
+  skDiv.innerHTML=skBtns.map(b=>`<button class="sk-btn ${b.cls}" title="${b.title}" data-sk="${b.sk}" data-lbl="">&nbsp;</button>`).join("")
+  skDiv.querySelectorAll(".sk-btn").forEach(btn=>{
+    btn.addEventListener("click",e=>{ e.stopPropagation(); schnellSichtung(btn.closest(".bereich"),btn.dataset.sk,1) })
+    btn.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); schnellSichtung(btn.closest(".bereich"),btn.dataset.sk,-1) })
   })
-  bereich.appendChild(div)
+  bereich.appendChild(skDiv)
+  // Demografie-Buttons
+  const demDiv=document.createElement("div")
+  demDiv.className="dem-buttons"
+  const demBtns=[
+    {cls:"dem-me",key:"me",title:"♂ Erw (Klick +1, Rechtsklick -1)"},
+    {cls:"dem-we",key:"we",title:"♀ Erw (Klick +1, Rechtsklick -1)"},
+    {cls:"dem-mk",key:"mk",title:"♂ Kind (Klick +1, Rechtsklick -1)"},
+    {cls:"dem-wk",key:"wk",title:"♀ Kind (Klick +1, Rechtsklick -1)"},
+  ]
+  demDiv.innerHTML=demBtns.map(b=>`<button class="dem-btn ${b.cls}" title="${b.title}" data-dem="${b.key}">&nbsp;</button>`).join("")
+  demDiv.querySelectorAll(".dem-btn").forEach(btn=>{
+    btn.addEventListener("click",e=>{ e.stopPropagation(); schnellDemografie(btn.closest(".bereich"),btn.dataset.dem,1) })
+    btn.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); schnellDemografie(btn.closest(".bereich"),btn.dataset.dem,-1) })
+  })
+  bereich.appendChild(demDiv)
+}
+
+function schnellDemografie(bereich, key, delta){
+  if(!bereich) return
+  bereich._demCounts = bereich._demCounts||{me:0,we:0,mk:0,wk:0}
+  bereich._demCounts[key] = Math.max(0,(bereich._demCounts[key]||0)+delta)
+  updateDemButtons(bereich)
+  saveState()
+}
+
+function updateDemButtons(bereich){
+  const c=bereich._demCounts||{me:0,we:0,mk:0,wk:0}
+  const labels={me:"♂E",we:"♀E",mk:"♂K",wk:"♀K"}
+  bereich.querySelectorAll(".dem-btn").forEach(btn=>{
+    const n=c[btn.dataset.dem]||0
+    btn.innerHTML=n>0?"<b>"+n+"</b>":"&nbsp;"
+    btn.title=labels[btn.dataset.dem]+" (Klick +1, Rechtsklick -1)"
+    btn.classList.toggle("has-count",n>0)
+  })
 }
 function sichtungKorrigieren(bereich,alteSK,neueSK){
   if(alteSK===neueSK) return
@@ -741,6 +786,16 @@ function updateDashboard(){
   patRows+='<br><span class="dash-sk2">SK2: '+sichtungCounts.SK2+'</span>'
   patRows+='<br><span class="dash-sk3">SK3: '+sichtungCounts.SK3+'</span>'
   patRows+='<br><span class="dash-sk4">SK4: '+sichtungCounts.SK4+'</span>'
+  // Demografie-Summe aus allen Bereichen
+  let totMe=0,totWe=0,totMk=0,totWk=0
+  document.querySelectorAll(".bereich").forEach(b=>{
+    if(b._demCounts){
+      totMe+=b._demCounts.me||0; totWe+=b._demCounts.we||0
+      totMk+=b._demCounts.mk||0; totWk+=b._demCounts.wk||0
+    }
+  })
+  const hasDem=totMe||totWe||totMk||totWk
+  if(hasDem) patRows+='<br><span style="color:var(--text-dim);font-size:11px">♂E:'+totMe+' ♀E:'+totWe+' ♂K:'+totMk+' ♀K:'+totWk+'</span>'
   document.getElementById("dashPatients").innerHTML=patRows
   syncToFirebase()
 }
