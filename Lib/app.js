@@ -119,6 +119,26 @@ function initDrag(){
       }
       const itemName = dragged.dataset.fkName || dragged.children[2]?.innerText || dragged.children[1]?.innerText || "Element"
       const ziel = area.querySelector(".bheader")?.innerText || area.querySelector(".abschnittName")?.value || (area.id==="zufahrt" ? "Zufahrt" : "Unbekannt")
+      // SK-Zähler beim Fahrzeug-Drag mitnehmen
+      if(dragged.classList.contains("vehicle")){
+        const patBadge = dragged.querySelector(".patBadge")
+        const patAnz = patBadge ? (parseInt(patBadge.innerText)||0) : 0
+        if(patAnz > 0){
+          const quellBereich = dragged.parentElement?.closest(".bereich")
+          const zielBereich = area.classList.contains("bereich") ? area : null
+          // Hole SK vom patBadge dataset
+          const sk = dragged.dataset.lastSk || null
+          if(sk && quellBereich && quellBereich._skCounts){
+            quellBereich._skCounts[sk] = Math.max(0,(quellBereich._skCounts[sk]||0)-patAnz)
+            updateSkButtons(quellBereich)
+          }
+          if(sk && zielBereich){
+            zielBereich._skCounts = zielBereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
+            zielBereich._skCounts[sk] = (zielBereich._skCounts[sk]||0)+patAnz
+            updateSkButtons(zielBereich)
+          }
+        }
+      }
       logEvent(itemName + " verschoben nach: " + ziel)
       updatePatients()
       saveState()
@@ -258,20 +278,33 @@ function initSEG(){
     }
     btn.setAttribute("draggable","true")
     btn.addEventListener("dragstart",e=>{
-      btn._wasDragged=true; dragged=btn; e.dataTransfer.effectAllowed="move"
+      btn._wasDragged=true
+      // Wir setzen dragged auf ein virtuelles Objekt, nie auf das Original
+      dragged=btn  // referenz für segName, aber Original wird NICHT bewegt
+      e.dataTransfer.effectAllowed="copy"
+      e.dataTransfer.setData("text/plain", btn.innerText.trim())
     })
-    btn.addEventListener("dragend",()=>{ dragged=null })
+    btn.addEventListener("dragend",()=>{
+      // Original immer sichtbar lassen
+      btn.style.opacity=""
+      dragged=null
+    })
   })
   document.querySelectorAll(".bereich, #zufahrt").forEach(area=>{
     area.addEventListener("dragover",e=>{
-      if(dragged&&dragged.classList.contains("seg")){ e.preventDefault(); e.dataTransfer.dropEffect="move" }
+      if(dragged&&(dragged.classList.contains("seg")||dragged.classList.contains("seg-badge"))){ e.preventDefault(); e.dataTransfer.dropEffect="copy" }
     })
     area.addEventListener("drop",e=>{
-      if(!dragged||!dragged.classList.contains("seg")) return
+      // Seg-Button oder Seg-Badge?
+      const isSegBtn = dragged&&dragged.classList.contains("seg")&&dragged.classList.contains("seg")
+      const isSegBadge = dragged&&dragged.classList.contains("seg-badge")
+      if(!isSegBtn&&!isSegBadge) return
       e.preventDefault(); e.stopPropagation()
-      const segName=dragged.dataset.seg||dragged.innerText.trim()
-      // Entferne evtl. vorhandene Badge dieses SEG aus anderen Bereichen (nicht das Original)
+      const segName=dragged.dataset.seg||dragged.innerText.replace("×","").trim()
+      // Entferne vorhandene Badges dieses SEG (aber NIE das Original)
       document.querySelectorAll(".seg-badge").forEach(b=>{ if(b.dataset.seg===segName) b.remove() })
+      // Wenn Badge gezogen wurde, entferne ihn aus altem Bereich
+      if(isSegBadge) dragged.remove()
       const badge=document.createElement("div")
       badge.className="seg-badge"; badge.dataset.seg=segName
       // Badge ist auch draggable (für Verschieben zwischen Bereichen)
@@ -591,6 +624,8 @@ function assignPatientsToVehicle(){
   let id=document.getElementById("vehicleSelect").value
   let vehicle=document.querySelector('[data-id="'+id+'"]')
   if(!vehicle) return
+  // SK merken für späteres Drag
+  if(currentSichtung) vehicle.dataset.lastSk = currentSichtung
   let badge=vehicle.querySelector(".patBadge")
   if(!badge){
     badge=document.createElement("div")
@@ -672,7 +707,8 @@ function addSkButtons(bereich){
     {cls:"dem-mk",key:"mk",title:"♂ Kind (Klick +1, Rechtsklick -1)"},
     {cls:"dem-wk",key:"wk",title:"♀ Kind (Klick +1, Rechtsklick -1)"},
   ]
-  demDiv.innerHTML=demBtns.map(b=>`<button class="dem-btn ${b.cls}" title="${b.title}" data-dem="${b.key}">&nbsp;</button>`).join("")
+  const demLabels={me:"♂E",we:"♀E",mk:"♂K",wk:"♀K"}
+  demDiv.innerHTML=demBtns.map(b=>`<button class="dem-btn ${b.cls}" title="${b.title}" data-dem="${b.key}">${demLabels[b.key]}</button>`).join("")
   demDiv.querySelectorAll(".dem-btn").forEach(btn=>{
     btn.addEventListener("click",e=>{ e.stopPropagation(); schnellDemografie(btn.closest(".bereich"),btn.dataset.dem,1) })
     btn.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); schnellDemografie(btn.closest(".bereich"),btn.dataset.dem,-1) })
@@ -693,8 +729,8 @@ function updateDemButtons(bereich){
   const labels={me:"♂E",we:"♀E",mk:"♂K",wk:"♀K"}
   bereich.querySelectorAll(".dem-btn").forEach(btn=>{
     const n=c[btn.dataset.dem]||0
-    btn.innerHTML=n>0?"<b>"+n+"</b>":"&nbsp;"
-    btn.title=labels[btn.dataset.dem]+" (Klick +1, Rechtsklick -1)"
+    const lbl=labels[btn.dataset.dem]||""
+    btn.innerHTML = n>0 ? lbl+"<b>"+n+"</b>" : lbl
     btn.classList.toggle("has-count",n>0)
   })
 }

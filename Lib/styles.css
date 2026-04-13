@@ -503,7 +503,8 @@ header {
   font-weight: 700; opacity: 0.65;
 }
 .zufahrt {
-  height: 100%; overflow: auto;
+  min-height: 60px;
+  overflow: visible;
   padding: 28px 10px 8px;
   display: flex; flex-wrap: wrap;
   gap: 8px; align-content: flex-start;
@@ -1510,9 +1511,10 @@ header {
   left: 6px;
 }
 .dem-btn {
-  min-width: 18px;
+  min-width: 22px;
   height: 18px;
-  padding: 0 3px;
+  padding: 0 4px;
+  font-size: 10px;
   border: none;
   border-radius: 3px;
   font-family: 'Rajdhani', sans-serif;
