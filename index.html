@@ -238,6 +238,25 @@
     </div>
     <button class="sichtSetzenBtn" onclick="sichtungSetzen()">Sichtung zuweisen</button>
 
+    <!-- DEMOGRAFIE -->
+    <div style="margin:8px 0 4px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Demografie (optional)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Erwachsene</div>
+        <div style="display:flex;gap:4px">
+          <input id="dem_m_erw" type="number" min="0" placeholder="♂" style="width:50%;padding:5px 6px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;outline:none;text-align:center">
+          <input id="dem_w_erw" type="number" min="0" placeholder="♀" style="width:50%;padding:5px 6px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;outline:none;text-align:center">
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Kinder</div>
+        <div style="display:flex;gap:4px">
+          <input id="dem_m_kind" type="number" min="0" placeholder="♂" style="width:50%;padding:5px 6px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;outline:none;text-align:center">
+          <input id="dem_w_kind" type="number" min="0" placeholder="♀" style="width:50%;padding:5px 6px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;outline:none;text-align:center">
+        </div>
+      </div>
+    </div>
+
     <div class="popupButtons">
 
 <button onclick="patientAction('add')">Anlegen</button>
