@@ -1364,9 +1364,34 @@ header {
 .abschnitt {
   font-size: clamp(10px,0.75vw,13px) !important;
   padding-bottom: 52px;
+  overflow: hidden;
 }
-.abschnitt .sk-buttons { bottom: 6px; right: 4px; }
-.abschnitt .dem-buttons { bottom: 28px; left: 4px; }
+.abschnitt .sk-buttons {
+  bottom: 6px;
+  right: 4px;
+  left: 4px;
+  width: auto;
+  justify-content: flex-end;
+}
+.abschnitt .dem-buttons {
+  bottom: 30px;
+  left: 4px;
+  right: 4px;
+  width: auto;
+  justify-content: flex-start;
+}
+.abschnitt .sk-btn {
+  min-width: 18px;
+  height: 18px;
+  font-size: 9px;
+  padding: 0 2px;
+}
+.abschnitt .dem-btn {
+  min-width: 18px;
+  height: 18px;
+  font-size: 9px;
+  padding: 0 2px;
+}
 .abschnitt .drop {
   min-height: clamp(40px,4vh,70px);
 }
