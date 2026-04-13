@@ -110,6 +110,8 @@ function initDrag(){
     area.addEventListener("drop", e=>{
       e.preventDefault()
       if(!dragged) return
+      // SEG-Buttons und SEG-Badges haben eigenen Handler in initSEG → hier ignorieren
+      if(dragged.classList.contains("seg") || dragged.classList.contains("seg-badge")) return
       let drop = area.querySelector(".drop")
       if(drop){
         drop.appendChild(dragged)
@@ -279,13 +281,13 @@ function initSEG(){
     btn.setAttribute("draggable","true")
     btn.addEventListener("dragstart",e=>{
       btn._wasDragged=true
-      // Wir setzen dragged auf ein virtuelles Objekt, nie auf das Original
-      dragged=btn  // referenz für segName, aber Original wird NICHT bewegt
+      // Proxy-Objekt statt DOM-Element – Browser bewegt das Original NICHT
+      const segName=btn.innerText.trim()
+      dragged={ classList:{contains:(c)=>c==="seg"}, dataset:{seg:segName}, innerText:segName, _isSegProxy:true }
       e.dataTransfer.effectAllowed="copy"
-      e.dataTransfer.setData("text/plain", btn.innerText.trim())
+      e.dataTransfer.setData("text/plain", segName)
     })
     btn.addEventListener("dragend",()=>{
-      // Original immer sichtbar lassen
       btn.style.opacity=""
       dragged=null
     })
@@ -683,6 +685,9 @@ function updateSkButtons(bereich){
 }
 function addSkButtons(bereich){
   if(bereich.querySelector(".sk-buttons")) return
+  // Gemeinsamer Container für SK + Demografie nebeneinander
+  const bar=document.createElement("div")
+  bar.className="bereich-bottom-bar"
   // SK-Buttons
   const skDiv=document.createElement("div")
   skDiv.className="sk-buttons"
@@ -697,7 +702,6 @@ function addSkButtons(bereich){
     btn.addEventListener("click",e=>{ e.stopPropagation(); schnellSichtung(btn.closest(".bereich"),btn.dataset.sk,1) })
     btn.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); schnellSichtung(btn.closest(".bereich"),btn.dataset.sk,-1) })
   })
-  bereich.appendChild(skDiv)
   // Demografie-Buttons
   const demDiv=document.createElement("div")
   demDiv.className="dem-buttons"
@@ -713,7 +717,9 @@ function addSkButtons(bereich){
     btn.addEventListener("click",e=>{ e.stopPropagation(); schnellDemografie(btn.closest(".bereich"),btn.dataset.dem,1) })
     btn.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); schnellDemografie(btn.closest(".bereich"),btn.dataset.dem,-1) })
   })
-  bereich.appendChild(demDiv)
+  bar.appendChild(skDiv)
+  bar.appendChild(demDiv)
+  bereich.appendChild(bar)
 }
 
 function schnellDemografie(bereich, key, delta){
@@ -831,7 +837,7 @@ function updateDashboard(){
     }
   })
   const hasDem=totMe||totWe||totMk||totWk
-  if(hasDem) patRows+='<br><span style="color:var(--text-dim);font-size:11px">♂E:'+totMe+' ♀E:'+totWe+' ♂K:'+totMk+' ♀K:'+totWk+'</span>'
+  if(hasDem) patRows+='<br><span class="dash-dem">♂E:<b>'+totMe+'</b> ♀E:<b>'+totWe+'</b> ♂K:<b>'+totMk+'</b> ♀K:<b>'+totWk+'</b></span>'
   document.getElementById("dashPatients").innerHTML=patRows
   syncToFirebase()
 }

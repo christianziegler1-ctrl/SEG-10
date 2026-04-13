@@ -220,7 +220,7 @@ header {
   border-radius: 8px;
   margin-top: 9px;
   min-height: 84px;
-  padding: 10px 10px 32px 12px;
+  padding: 10px 10px 36px 12px;
   position: relative;
   overflow: visible;
   transition: border-color 0.2s, background 0.25s;
@@ -477,6 +477,7 @@ header {
 .dash-sk2 { color: #c47000; font-weight: 700; }
 .dash-sk3 { color: #1a7a52; font-weight: 700; }
 .dash-sk4 { color: var(--text-dim); font-weight: 600; }
+.dash-dem { color: var(--text-primary); font-size: 12px; font-weight: 600; letter-spacing: 0.3px; }
 
 /* =========================================================
    ZUFAHRT
@@ -1494,21 +1495,29 @@ header {
 /* =========================================================
    SCHNELL-SICHTUNG BUTTONS
 ========================================================= */
+.bereich-bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  gap: 4px;
+  background: rgba(0,0,0,0.03);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 7px 7px;
+}
 .sk-buttons {
   display: flex;
   gap: 3px;
-  flex-wrap: wrap;
-  position: absolute;
-  bottom: 6px;
-  right: 6px;
+  flex-wrap: nowrap;
 }
 .dem-buttons {
   display: flex;
   gap: 3px;
-  flex-wrap: wrap;
-  position: absolute;
-  bottom: 6px;
-  left: 6px;
+  flex-wrap: nowrap;
 }
 .dem-btn {
   min-width: 22px;
