@@ -164,10 +164,6 @@
 <button class="exportBtn" onclick="exportEinsatz()">Export / Druck</button>
 <button onclick="startEinsatz()" style="color:var(--accent-green);border-color:rgba(26,122,82,0.4);background:rgba(26,122,82,0.07)">Einsatz starten</button>
 <button onclick="endEinsatz()" style="color:var(--accent-red);border-color:rgba(192,57,43,0.4);background:rgba(192,57,43,0.07)">Einsatz beenden</button>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:2px">
-  <button onclick="einsatzAusDateiLaden()" title="Einsatz aus JSON-Datei laden" style="font-size:11px;padding:6px 4px;color:var(--text-dim);border-color:var(--border);background:transparent;letter-spacing:0.5px">📂 Datei laden</button>
-  <button onclick="einsatzAusFirebaseWiederherstellen()" title="Letzten Stand aus Cloud laden" style="font-size:11px;padding:6px 4px;color:var(--text-dim);border-color:var(--border);background:transparent;letter-spacing:0.5px">☁ Cloud laden</button>
-</div>
 </div>
 
 <div id="timer">00:00:00</div>
@@ -190,26 +186,13 @@
 
 </div>
 
+</div>
+
 <div class="funkPanel" style="margin-top:10px">
-
 <h3>Einsatztagebuch</h3>
-
 <input id="tagebuchInput" placeholder="Eintrag…">
 <button onclick="tagebuchSenden()">Eintragen</button>
-
-<div id="tagebuchLetzter" style="
-  margin-top:8px;
-  padding:8px 10px;
-  background:var(--bg-card);
-  border:1.5px solid var(--border);
-  border-radius:5px;
-  font-family:'Share Tech Mono',monospace;
-  font-size:12px;
-  color:var(--text-secondary);
-  min-height:38px;
-  line-height:1.6;
-"></div>
-
+<div id="tagebuchLetzter" style="margin-top:8px;padding:8px 10px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:5px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-secondary);min-height:38px;line-height:1.6;"></div>
 </div>
 
 </div>
@@ -237,28 +220,14 @@
       <span id="sichtungLabel" class="sichtungLabel">–</span>
     </div>
     <button class="sichtSetzenBtn" onclick="sichtungSetzen()">Sichtung zuweisen</button>
-
-    <!-- DEMOGRAFIE -->
-    <div style="margin:8px 0 4px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Demografie (optional)</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
-      <div style="display:flex;flex-direction:column;gap:3px">
-        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Erwachsene</div>
-        <div style="display:flex;gap:4px">
-          <input id="dem_m_erw" type="number" min="0" placeholder="♂" style="width:50%;padding:5px 6px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;outline:none;text-align:center">
-          <input id="dem_w_erw" type="number" min="0" placeholder="♀" style="width:50%;padding:5px 6px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;outline:none;text-align:center">
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:3px">
-        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Kinder</div>
-        <div style="display:flex;gap:4px">
-          <input id="dem_m_kind" type="number" min="0" placeholder="♂" style="width:50%;padding:5px 6px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;outline:none;text-align:center">
-          <input id="dem_w_kind" type="number" min="0" placeholder="♀" style="width:50%;padding:5px 6px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;outline:none;text-align:center">
-        </div>
-      </div>
+    <div style="margin:6px 0 4px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Demografie (optional)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-bottom:6px">
+      <input id="dem_m_erw" type="number" min="0" placeholder="♂ Erw" style="padding:5px 3px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;outline:none;text-align:center">
+      <input id="dem_w_erw" type="number" min="0" placeholder="♀ Erw" style="padding:5px 3px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;outline:none;text-align:center">
+      <input id="dem_m_kind" type="number" min="0" placeholder="♂ Kind" style="padding:5px 3px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;outline:none;text-align:center">
+      <input id="dem_w_kind" type="number" min="0" placeholder="♀ Kind" style="padding:5px 3px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:4px;color:var(--text-primary);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;outline:none;text-align:center">
     </div>
-
     <div class="popupButtons">
-
 <button onclick="patientAction('add')">Anlegen</button>
 <button onclick="patientAction('21')">SEG-21</button>
 <button onclick="patientAction('22')">SEG-22</button>
@@ -387,6 +356,8 @@ Patienten Fahrzeug zuweisen
     </div>
   </div>
 </div>
+
+<div id="autosaveIndicator">Autosave aktiv</div>
 
 <!-- SHORTCUT OVERLAY -->
 <div id="shortcutOverlay" class="popup" onclick="this.style.display='none'">
