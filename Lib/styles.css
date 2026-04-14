@@ -220,7 +220,7 @@ header {
   border-radius: 8px;
   margin-top: 9px;
   min-height: 84px;
-  padding: 10px 10px 34px 12px;
+  padding: 10px 10px 10px 12px;
   position: relative;
   overflow: visible;
   transition: border-color 0.2s, background 0.25s;
@@ -477,8 +477,6 @@ header {
 .dash-sk2 { color: #c47000; font-weight: 700; }
 .dash-sk3 { color: #1a7a52; font-weight: 700; }
 .dash-sk4 { color: var(--text-dim); font-weight: 600; }
-.dash-dem { color: var(--text-primary); font-weight: 700; }
-
 
 /* =========================================================
    ZUFAHRT
@@ -505,8 +503,7 @@ header {
   font-weight: 700; opacity: 0.65;
 }
 .zufahrt {
-  min-height: 60px;
-  overflow: visible;
+  height: 100%; overflow: auto;
   padding: 28px 10px 8px;
   display: flex; flex-wrap: wrap;
   gap: 8px; align-content: flex-start;
@@ -705,8 +702,6 @@ header {
   padding: 22px; width: 350px;
   box-shadow: 0 28px 60px rgba(0,0,0,0.35);
   transition: background 0.25s;
-  max-height: 90vh;
-  overflow-y: auto;
 }
 
 .popupContent h3 {
@@ -1355,21 +1350,24 @@ header {
 }
 #abschnitteContainer {
   margin-top: clamp(6px,0.6vw,10px);
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: clamp(5px,0.5vw,8px);
+  align-items: start;
 }
 /* Abschnitte kompakter damit sie auf den Bildschirm passen */
 .abschnitt {
   font-size: clamp(10px,0.75vw,13px) !important;
-  padding-bottom: 34px;
-  overflow: visible;
+  padding: clamp(4px,0.4vw,8px) !important;
 }
 .abschnitt .drop {
-  min-height: clamp(40px,4vh,70px);
+  min-height: clamp(36px,3.5vh,60px);
 }
 .abschnitt .adressfeld {
   display: none;
+}
+.abschnitt .abschnittName {
+  font-size: clamp(11px,0.8vw,14px);
 }
 .abschnittHeader {
   display: block;
@@ -1493,123 +1491,3 @@ header {
   0%, 100% { box-shadow: var(--glow-red); }
   50% { box-shadow: 0 0 20px rgba(192,57,43,0.5); }
 }
-
-/* =========================================================
-   SCHNELL-SICHTUNG BUTTONS
-========================================================= */
-.bereich-bottom-bar {
-  display: none; /* nicht mehr verwendet */
-}
-.sk-buttons {
-  display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
-  position: absolute;
-  bottom: 6px;
-  right: 6px;
-}
-.dem-buttons {
-  display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
-  position: absolute;
-  bottom: 6px;
-  left: 6px;
-}
-/* Abschnitte: gleiche Größe, passt absolut */
-.abschnitt .sk-buttons { bottom: 6px; right: 4px; }
-.abschnitt .dem-buttons { bottom: 6px; left: 4px; }
-.dem-btn {
-  min-width: 26px;
-  height: 18px;
-  padding: 0 5px;
-  font-size: 10px;
-  border: none;
-  border-radius: 3px;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.12s;
-  user-select: none;
-  white-space: nowrap;
-  gap: 2px;
-}
-.dem-btn:active { transform: scale(0.88); }
-.dem-btn.has-count { min-width: 24px; }
-.dem-btn b { font-size: 12px; font-weight: 900; }
-.dem-btn.dem-me { background: #2980b9; color: #fff; }
-.dem-btn.dem-we { background: #8e44ad; color: #fff; }
-.dem-btn.dem-mk { background: #1a6696; color: #fff; }
-.dem-btn.dem-wk { background: #6c3483; color: #fff; }
-.dem-btn:hover.dem-me { background: #1f638f; }
-.dem-btn:hover.dem-we { background: #6c3483; }
-.dem-btn:hover.dem-mk { background: #134e70; }
-.dem-btn:hover.dem-wk { background: #512b6b; }
-.sk-btn {
-  min-width: 22px;
-  height: 22px;
-  padding: 0 4px;
-  border: none;
-  border-radius: 4px;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.12s;
-  user-select: none;
-  line-height: 1;
-  white-space: nowrap;
-}
-.sk-btn:active { transform: scale(0.88); }
-.sk-btn.has-count { min-width: 32px; font-size: 12px; }
-.sk-btn b { font-size: 13px; margin-left: 1px; }
-.sk-btn.sk1 { background: #c0392b; color: #fff; border: none; }
-.sk-btn.sk2 { background: #d48900; color: #fff; border: none; }
-.sk-btn.sk3 { background: #1a7a52; color: #fff; border: none; }
-.sk-btn.sk4 { background: #444;    color: #fff; border: none; }
-.sk-btn:hover.sk1 { background: #a02020; }
-.sk-btn:hover.sk2 { background: #b37200; }
-.sk-btn:hover.sk3 { background: #145f40; }
-.sk-btn:hover.sk4 { background: #222; }
-.sk-btn { min-width: 18px; height: 18px; padding: 0 3px; font-size: 11px; border-radius: 3px; }
-.sk-btn b { font-size: 12px; font-weight: 900; }
-
-/* SEG-Badge in Bereichen */
-.seg-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 14px;
-  background: rgba(192,57,43,0.08);
-  border: 1.5px solid rgba(192,57,43,0.3);
-  border-radius: 5px;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #a52020;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  margin: 2px 3px 2px 0;
-  cursor: grab;
-  transition: all 0.18s;
-}
-.seg-badge:hover { background: rgba(192,57,43,0.18); }
-.seg-badge-remove { cursor: pointer; font-size: 14px; opacity: 0.6; margin-left: 2px; }
-.seg-badge-remove:hover { opacity: 1; }
-
-/* Light mode: klarere Rot/Grün Unterscheidung */
-:root .seg { color: #a52020 !important; border-color: rgba(165,32,32,0.5) !important; }
-:root .seg.active { color: #0e5c38 !important; background: rgba(14,92,56,0.2) !important; border-color: rgba(14,92,56,0.65) !important; }
-:root .bheader { color: #a52020; border-color: rgba(165,32,32,0.5); background: rgba(165,32,32,0.13); }
-:root .bheader.active { color: #0e5c38 !important; border-color: rgba(14,92,56,0.65) !important; background: rgba(14,92,56,0.2) !important; }
-[data-theme="dark"] .seg { color: var(--accent-red) !important; }
-[data-theme="dark"] .seg.active { color: var(--accent-green) !important; background: rgba(46,196,182,0.15) !important; border-color: rgba(46,196,182,0.5) !important; }
-[data-theme="dark"] .bheader { color: var(--accent-red) !important; }
-[data-theme="dark"] .bheader.active { color: var(--accent-green) !important; }

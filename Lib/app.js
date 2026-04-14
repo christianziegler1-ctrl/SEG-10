@@ -22,7 +22,6 @@ let vehicleHotkeysActive = false
 
 let currentSichtung = null
 let sichtungCounts = { SK1: 0, SK2: 0, SK3: 0, SK4: 0 }
-let demografieLog = []
 
 let alarmstufen = []
 let aktiveAlarmstufe = null
@@ -110,8 +109,6 @@ function initDrag(){
     area.addEventListener("drop", e=>{
       e.preventDefault()
       if(!dragged) return
-      // SEG-Elemente werden ausschließlich von initSEG behandelt
-      if(dragged._isSegProxy || dragged._isSegBadge) return
       let drop = area.querySelector(".drop")
       if(drop){
         drop.appendChild(dragged)
@@ -121,29 +118,6 @@ function initDrag(){
       }
       const itemName = dragged.dataset.fkName || dragged.children[2]?.innerText || dragged.children[1]?.innerText || "Element"
       const ziel = area.querySelector(".bheader")?.innerText || area.querySelector(".abschnittName")?.value || (area.id==="zufahrt" ? "Zufahrt" : "Unbekannt")
-      // Lokale SK-Bereichszähler beim Fahrzeug-Drag anpassen (globaler sichtungCounts bleibt unberührt)
-      if(dragged.classList.contains("vehicle")){
-        const patBadge = dragged.querySelector(".patBadge")
-        const patAnz = patBadge ? (parseInt(patBadge.innerText)||0) : 0
-        if(patAnz > 0){
-          const quellBereich = dragged.closest(".bereich")
-          const zielBereich = area.classList.contains("bereich") ? area : null
-          const sk = dragged.dataset.lastSk || null
-          if(sk){
-            // Quellbereich: SK runter
-            if(quellBereich && quellBereich._skCounts){
-              quellBereich._skCounts[sk] = Math.max(0,(quellBereich._skCounts[sk]||0)-patAnz)
-              updateSkButtons(quellBereich)
-            }
-            // Zielbereich: SK rauf (auch Transport)
-            if(zielBereich){
-              zielBereich._skCounts = zielBereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
-              zielBereich._skCounts[sk] = (zielBereich._skCounts[sk]||0)+patAnz
-              updateSkButtons(zielBereich)
-            }
-          }
-        }
-      }
       logEvent(itemName + " verschoben nach: " + ziel)
       updatePatients()
       saveState()
@@ -275,74 +249,17 @@ function createVehicle(type){
 function initSEG(){
   document.querySelectorAll(".seg").forEach(btn=>{
     btn.onclick=()=>{
-      if(btn._wasDragged){ btn._wasDragged=false; return }
       btn.classList.toggle("active")
-      const text=btn.innerText.trim()
-      logEvent(btn.classList.contains("active")?"SEG aktiviert: "+text:"SEG deaktiviert: "+text)
+      const text = btn.innerText.trim()
+      logEvent(btn.classList.contains("active") ? "SEG aktiviert: " + text : "SEG deaktiviert: " + text)
       saveState()
     }
-    btn.setAttribute("draggable","true")
-    btn.addEventListener("dragstart",e=>{
-      btn._wasDragged=true
-      // Proxy-Objekt statt DOM-Element – Browser bewegt das Original NICHT
-      const segName=btn.innerText.trim()
-      dragged={ classList:{contains:(c)=>c==="seg"}, dataset:{seg:segName}, innerText:segName, _isSegProxy:true }
-      e.dataTransfer.effectAllowed="copy"
-      e.dataTransfer.setData("text/plain", segName)
-    })
-    btn.addEventListener("dragend",()=>{
-      btn.style.opacity=""
-      dragged=null
-    })
-  })
-  document.querySelectorAll(".bereich, #zufahrt").forEach(area=>{
-    area.addEventListener("dragover",e=>{
-      if(dragged&&(dragged.classList.contains("seg")||dragged.classList.contains("seg-badge"))){ e.preventDefault(); e.dataTransfer.dropEffect="copy" }
-    })
-    area.addEventListener("drop",e=>{
-      // Seg-Button oder Seg-Badge?
-      const isSegBtn = dragged&&dragged.classList.contains("seg")&&dragged.classList.contains("seg")
-      const isSegBadge = dragged&&dragged.classList.contains("seg-badge")
-      if(!isSegBtn&&!isSegBadge) return
-      e.preventDefault(); e.stopPropagation()
-      const segName=dragged.dataset.seg||dragged.innerText.replace("×","").trim()
-      // Entferne vorhandene Badges dieses SEG (aber NIE das Original)
-      document.querySelectorAll(".seg-badge").forEach(b=>{ if(b.dataset.seg===segName) b.remove() })
-      // Wenn Badge gezogen wurde, entferne ihn aus altem Bereich
-      if(isSegBadge) dragged.remove()
-      const badge=document.createElement("div")
-      badge.className="seg-badge"; badge.dataset.seg=segName
-      // Badge ist auch draggable (für Verschieben zwischen Bereichen)
-      badge.draggable=true
-      badge.addEventListener("dragstart",ev=>{ ev.dataTransfer.effectAllowed="move"; dragged=badge; badge._isSegBadge=true })
-      badge.addEventListener("dragend",()=>{ dragged=null })
-      badge.innerHTML=segName+' <span class="seg-badge-remove" onclick="this.parentElement.remove();saveState()">×</span>'
-      const drop=area.classList.contains("drop")?area:area.querySelector(".drop")
-      if(drop) area.insertBefore(badge,drop); else area.appendChild(badge)
-      logEvent("SEG zugewiesen: "+segName+" → "+(area.querySelector(".bheader,.abschnittName")?.innerText?.trim()||area.id||"Bereich"))
-      saveState()
-    })
-  })
-  // segButtons als Rückgabe-Ziel
-  document.querySelector(".segButtons")?.addEventListener("dragover",e=>{
-    if(dragged&&(dragged.classList.contains("seg")||dragged.classList.contains("seg-badge"))){ e.preventDefault() }
-  })
-  document.querySelector(".segButtons")?.addEventListener("drop",e=>{
-    if(!dragged) return
-    // Nur Badge entfernen, nie das Original (.seg in .segButtons)
-    if(dragged.classList.contains("seg")) return
-    const segName=dragged.dataset.seg
-    if(!segName) return
-    e.preventDefault()
-    document.querySelectorAll(".seg-badge").forEach(b=>{ if(b.dataset.seg===segName) b.remove() })
-    logEvent("SEG zurück: "+segName)
-    saveState()
   })
   document.querySelectorAll(".unit").forEach(h=>{
     h.onclick=()=>{
       h.classList.toggle("active")
-      const text=h.innerText.trim()
-      logEvent(h.classList.contains("active")?"Bereich aktiviert: "+text:"Bereich deaktiviert: "+text)
+      const text = h.innerText.trim()
+      logEvent(h.classList.contains("active") ? "Bereich aktiviert: " + text : "Bereich deaktiviert: " + text)
       saveState()
     }
   })
@@ -477,9 +394,6 @@ function sendFunk(){
 
 /* PATIENTEN */
 function initPatients(){
-  document.querySelectorAll(".bereich").forEach(b=>{
-    if(!b.classList.contains("zufahrtContainer") && !b.classList.contains("bergetrupp")) addSkButtons(b)
-  })
   document.querySelectorAll(".patients").forEach(el=>{
     el.onclick=(e)=>{
       e.stopPropagation()
@@ -513,78 +427,23 @@ function patientAction(action){
         currentPatientBox.dataset.sichtung=currentSichtung
         logEvent("Patienten angelegt: "+amount+" ("+currentSichtung+")")
       }else{ logEvent("Patienten angelegt: "+amount) }
-      const me=parseInt(document.getElementById("dem_m_erw")?.value)||0
-      const we=parseInt(document.getElementById("dem_w_erw")?.value)||0
-      const mk=parseInt(document.getElementById("dem_m_kind")?.value)||0
-      const wk=parseInt(document.getElementById("dem_w_kind")?.value)||0
-      if(me||we||mk||wk){
-        demografieLog.push({m_erw:me,w_erw:we,m_kind:mk,w_kind:wk,sk:currentSichtung||"",ts:new Date().toLocaleTimeString()})
-        ;["dem_m_erw","dem_w_erw","dem_m_kind","dem_w_kind"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=""})
-      }
     }else if(action==="DELETE"){
       let d=Math.min(amount,currentManual)
       currentPatientBox.dataset.manual=currentManual-d
       totalPatients=Math.max(0,totalPatients-d)
-      // SK-Zähler abziehen: gewählte SK oder SK des Bereichs
-      const skDel = currentSichtung || currentPatientBox.dataset.sichtung
-      if(skDel&&sichtungCounts[skDel]) sichtungCounts[skDel]=Math.max(0,sichtungCounts[skDel]-d)
-      const delBereich = currentPatientBox.closest(".bereich")
-      if(delBereich && skDel && delBereich._skCounts){
-        delBereich._skCounts[skDel]=Math.max(0,(delBereich._skCounts[skDel]||0)-d)
-        updateSkButtons(delBereich)
-      }
-      logEvent("Patienten geloescht: "+d+(skDel?" ("+skDel+")":""))
+      const ds=currentPatientBox.dataset.sichtung
+      if(ds&&sichtungCounts[ds]) sichtungCounts[ds]=Math.max(0,sichtungCounts[ds]-d)
+      logEvent("Patienten geloescht: "+d)
     }else if(action==="remove"||action==="RUECK"){
       currentPatientBox.dataset.manual=Math.max(0,currentManual-amount)
       logEvent(action==="RUECK"?"Patienten Rueckfuehrung: "+amount:"Patienten entfernt: "+amount)
     }else{
       if(currentManual<amount) return
       currentPatientBox.dataset.manual=currentManual-amount
-      const quellBereich = currentPatientBox.closest(".bereich")
-      // SK-Verteilung aus Quellbereich proportional übertragen
-      // Wenn currentSichtung gesetzt → nur diese SK verschieben
-      // Sonst → proportional aus _skCounts des Quellbereichs
-      const skMoves = {} // {SK1: n, SK2: n, ...} was wirklich verschoben wird
-      if(currentSichtung){
-        skMoves[currentSichtung] = amount
-      } else if(quellBereich && quellBereich._skCounts){
-        const counts = quellBereich._skCounts
-        const total = Object.values(counts).reduce((a,b)=>a+b,0)
-        if(total > 0){
-          let remaining = amount
-          const sks = ["SK1","SK2","SK3","SK4"]
-          sks.forEach((sk,i)=>{
-            const n = counts[sk]||0
-            if(n===0) return
-            const share = i===sks.length-1 ? remaining : Math.round(amount * n / total)
-            const actual = Math.min(share, n, remaining)
-            if(actual>0){ skMoves[sk]=actual; remaining-=actual }
-          })
-        }
-      }
-      // Quellbereich SK abziehen
-      if(quellBereich){
-        Object.entries(skMoves).forEach(([sk,n])=>{
-          quellBereich._skCounts = quellBereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
-          quellBereich._skCounts[sk] = Math.max(0,(quellBereich._skCounts[sk]||0)-n)
-        })
-        updateSkButtons(quellBereich)
-      }
-      // Zielbereich SK addieren
       document.querySelectorAll(".patients").forEach(p=>{
-        if(p.dataset.unit===action){
-          p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount
-          const zielBereich = p.closest(".bereich")
-          if(zielBereich){
-            zielBereich._skCounts = zielBereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
-            Object.entries(skMoves).forEach(([sk,n])=>{
-              zielBereich._skCounts[sk] = (zielBereich._skCounts[sk]||0)+n
-            })
-            updateSkButtons(zielBereich)
-          }
-        }
+        if(p.dataset.unit===action){ p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount }
       })
-      logEvent("Patienten umverteilt"+(skToMove?" ("+skToMove+")":"")+" -> "+action+": "+amount)
+      logEvent("Patienten umverteilt -> "+action+": "+amount)
     }
   }else{
     let current=parseInt(currentPatientBox.innerText)||0
@@ -596,24 +455,10 @@ function patientAction(action){
       if(current<amount) return
       currentPatientBox.innerText=current-amount
       if((parseInt(currentPatientBox.innerText)||0)===0) currentPatientBox.remove()
-      // SK vom Fahrzeug-Quellbereich in Zielbereich übertragen
-      const vehBereich=currentPatientBox.closest(".bereich")
-      const skMove=currentSichtung||null
       document.querySelectorAll(".patients").forEach(p=>{
-        if(p.dataset.unit===action){
-          p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount
-          // SK-Zähler im Zielbereich erhöhen
-          if(skMove){
-            const ziel=p.closest(".bereich")
-            if(ziel){ ziel._skCounts=ziel._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}; ziel._skCounts[skMove]=(ziel._skCounts[skMove]||0)+amount; updateSkButtons(ziel) }
-          }
-        }
+        if(p.dataset.unit===action){ p.dataset.manual=(parseInt(p.dataset.manual||"0")||0)+amount }
       })
-      if(vehBereich&&skMove&&vehBereich._skCounts){
-        vehBereich._skCounts[skMove]=Math.max(0,(vehBereich._skCounts[skMove]||0)-amount)
-        updateSkButtons(vehBereich)
-      }
-      logEvent("Patienten vom Fahrzeug umverteilt"+(skMove?" ("+skMove+")":"")+" -> "+action+": "+amount)
+      logEvent("Patienten vom Fahrzeug umverteilt -> "+action+": "+amount)
     }
   }
   updatePatients(); closePopup(); saveState()
@@ -644,30 +489,6 @@ function assignPatientsToVehicle(){
     let cm=parseInt(currentPatientBox.dataset.manual||"0")||0
     if(cm<amount) return
     currentPatientBox.dataset.manual=cm-amount
-    // SK-Zähler im Quellbereich abziehen
-    const quellBereich = currentPatientBox.closest(".bereich")
-    if(quellBereich){
-      quellBereich._skCounts = quellBereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
-      if(currentSichtung){
-        // Konkrete SK ausgewählt → direkt abziehen
-        quellBereich._skCounts[currentSichtung] = Math.max(0,(quellBereich._skCounts[currentSichtung]||0)-amount)
-      } else {
-        // Keine SK ausgewählt → proportional aus _skCounts abziehen
-        const counts = quellBereich._skCounts
-        const total = Object.values(counts).reduce((a,b)=>a+b,0)
-        if(total > 0){
-          let remaining = amount
-          ;["SK1","SK2","SK3","SK4"].forEach((sk,i,arr)=>{
-            const n = counts[sk]||0
-            if(n===0) return
-            const share = i===arr.length-1 ? remaining : Math.min(Math.round(amount*n/total), n, remaining)
-            counts[sk] = Math.max(0, n - share)
-            remaining -= share
-          })
-        }
-      }
-      updateSkButtons(quellBereich)
-    }
   }else{
     let c=parseInt(currentPatientBox.innerText)||0
     if(c<amount) return
@@ -677,8 +498,6 @@ function assignPatientsToVehicle(){
   let id=document.getElementById("vehicleSelect").value
   let vehicle=document.querySelector('[data-id="'+id+'"]')
   if(!vehicle) return
-  // SK merken für späteres Drag
-  if(currentSichtung) vehicle.dataset.lastSk = currentSichtung
   let badge=vehicle.querySelector(".patBadge")
   if(!badge){
     badge=document.createElement("div")
@@ -705,96 +524,6 @@ function updatePatients(){
     if(unit==="ZUFAHRT") field.style.display=total===0?"none":"block"
   })
   updateDashboard()
-}
-
-/* =========================================================
-   SCHNELL-SICHTUNG
-========================================================= */
-function schnellSichtung(bereich, sk, delta){
-  delta = delta||1
-  const field=bereich.querySelector(".patients")
-  if(!field) return
-  // Nicht unter 0
-  const prevManual=parseInt(field.dataset.manual||"0")||0
-  if(delta<0 && prevManual<=0) return
-  field.dataset.manual=Math.max(0,prevManual+delta)
-  sichtungCounts[sk]=Math.max(0,(sichtungCounts[sk]||0)+delta)
-  bereich._skCounts=bereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
-  bereich._skCounts[sk]=Math.max(0,(bereich._skCounts[sk]||0)+delta)
-  updateSkButtons(bereich)
-  updatePatients()
-  logEvent("Schnell-SK: "+(delta>0?"+":"")+delta+" "+sk+" in "+(bereich.querySelector(".bheader,.abschnittName")?.innerText||"Bereich"))
-  saveState()
-}
-function updateSkButtons(bereich){
-  const counts=bereich._skCounts||{SK1:0,SK2:0,SK3:0,SK4:0}
-  bereich.querySelectorAll(".sk-btn").forEach(btn=>{
-    const n=counts[btn.dataset.sk]||0
-    btn.innerHTML=n>0?"<b>"+n+"</b>":"&nbsp;"
-    btn.classList.toggle("has-count",n>0)
-  })
-}
-function addSkButtons(bereich){
-  if(bereich.querySelector(".sk-buttons")) return
-  // SK-Buttons — absolut rechts unten
-  const skDiv=document.createElement("div")
-  skDiv.className="sk-buttons"
-  const skBtns=[
-    {cls:"sk1",sk:"SK1",title:"SK1 Rot (Klick +1, Rechtsklick -1)"},
-    {cls:"sk2",sk:"SK2",title:"SK2 Gelb (Klick +1, Rechtsklick -1)"},
-    {cls:"sk3",sk:"SK3",title:"SK3 Grün (Klick +1, Rechtsklick -1)"},
-    {cls:"sk4",sk:"SK4",title:"SK4 Schwarz (Klick +1, Rechtsklick -1)"},
-  ]
-  skDiv.innerHTML=skBtns.map(b=>`<button class="sk-btn ${b.cls}" title="${b.title}" data-sk="${b.sk}" data-lbl="">&nbsp;</button>`).join("")
-  skDiv.querySelectorAll(".sk-btn").forEach(btn=>{
-    btn.addEventListener("click",e=>{ e.stopPropagation(); schnellSichtung(btn.closest(".bereich"),btn.dataset.sk,1) })
-    btn.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); schnellSichtung(btn.closest(".bereich"),btn.dataset.sk,-1) })
-  })
-  bereich.appendChild(skDiv)
-  // Demografie-Buttons — absolut links unten
-  const demDiv=document.createElement("div")
-  demDiv.className="dem-buttons"
-  const demBtns=[
-    {cls:"dem-me",key:"me",title:"♂ Erw (Klick +1, Rechtsklick -1)"},
-    {cls:"dem-we",key:"we",title:"♀ Erw (Klick +1, Rechtsklick -1)"},
-    {cls:"dem-mk",key:"mk",title:"♂ Kind (Klick +1, Rechtsklick -1)"},
-    {cls:"dem-wk",key:"wk",title:"♀ Kind (Klick +1, Rechtsklick -1)"},
-  ]
-  const demLabels={me:"♂E",we:"♀E",mk:"♂K",wk:"♀K"}
-  demDiv.innerHTML=demBtns.map(b=>`<button class="dem-btn ${b.cls}" title="${b.title}" data-dem="${b.key}">${demLabels[b.key]}</button>`).join("")
-  demDiv.querySelectorAll(".dem-btn").forEach(btn=>{
-    btn.addEventListener("click",e=>{ e.stopPropagation(); schnellDemografie(btn.closest(".bereich"),btn.dataset.dem,1) })
-    btn.addEventListener("contextmenu",e=>{ e.preventDefault(); e.stopPropagation(); schnellDemografie(btn.closest(".bereich"),btn.dataset.dem,-1) })
-  })
-  bereich.appendChild(demDiv)
-}
-
-function schnellDemografie(bereich, key, delta){
-  if(!bereich) return
-  bereich._demCounts = bereich._demCounts||{me:0,we:0,mk:0,wk:0}
-  bereich._demCounts[key] = Math.max(0,(bereich._demCounts[key]||0)+delta)
-  updateDemButtons(bereich)
-  updateDashboard()
-  saveState()
-}
-
-function updateDemButtons(bereich){
-  const c=bereich._demCounts||{me:0,we:0,mk:0,wk:0}
-  const labels={me:"♂E",we:"♀E",mk:"♂K",wk:"♀K"}
-  bereich.querySelectorAll(".dem-btn").forEach(btn=>{
-    const n=c[btn.dataset.dem]||0
-    const lbl=labels[btn.dataset.dem]||""
-    btn.innerHTML = n>0 ? '<span>'+lbl+'</span><b>'+n+'</b>' : lbl
-    btn.classList.toggle("has-count",n>0)
-  })
-}
-function sichtungKorrigieren(bereich,alteSK,neueSK){
-  if(alteSK===neueSK) return
-  if(alteSK&&sichtungCounts[alteSK]>0) sichtungCounts[alteSK]--
-  sichtungCounts[neueSK]=(sichtungCounts[neueSK]||0)+1
-  updatePatients()
-  logEvent("SK korrigiert: "+alteSK+" → "+neueSK)
-  saveState()
 }
 
 /* SICHERHEIT: Fahrzeuge/FK bei Bereich-Loeschen zurueck in Zufahrt */
@@ -876,16 +605,6 @@ function updateDashboard(){
   patRows+='<br><span class="dash-sk2">SK2: '+sichtungCounts.SK2+'</span>'
   patRows+='<br><span class="dash-sk3">SK3: '+sichtungCounts.SK3+'</span>'
   patRows+='<br><span class="dash-sk4">SK4: '+sichtungCounts.SK4+'</span>'
-  // Demografie-Summe aus allen Bereichen
-  let totMe=0,totWe=0,totMk=0,totWk=0
-  document.querySelectorAll(".bereich").forEach(b=>{
-    if(b._demCounts){
-      totMe+=b._demCounts.me||0; totWe+=b._demCounts.we||0
-      totMk+=b._demCounts.mk||0; totWk+=b._demCounts.wk||0
-    }
-  })
-  const hasDem=totMe||totWe||totMk||totWk
-  patRows+='<br><span class="dash-dem">♂E:'+totMe+' ♀E:'+totWe+' ♂K:'+totMk+' ♀K:'+totWk+'</span>'
   document.getElementById("dashPatients").innerHTML=patRows
   syncToFirebase()
 }
@@ -958,7 +677,6 @@ function saveState(){
     einsatzStartZeit: einsatzStartZeit, // Timer-Startzeit mitspeichern
     log: eventLog,
     tagebuch: tagebuch,
-    demografieLog: demografieLog,
     theme: document.documentElement.getAttribute("data-theme")||"light",
     sichtungCounts
   }
@@ -1148,6 +866,7 @@ function tagebuchSenden(){
 
   inp.value = ""
   logEvent("Tagebuch: " + text)
+  // Immer in localStorage sichern, unabhaengig ob Einsatz aktiv
   try{ localStorage.setItem("tagebuch", JSON.stringify(tagebuch)) }catch{}
   saveState()
 }
@@ -1156,9 +875,14 @@ document.addEventListener("DOMContentLoaded", ()=>{
   document.getElementById("tagebuchInput")?.addEventListener("keydown", e=>{
     if(e.key === "Enter"){ e.preventDefault(); tagebuchSenden() }
   })
+  // Letzten Eintrag aus localStorage wiederherstellen
   try{
-    const saved=localStorage.getItem("tagebuch")
-    if(saved){ tagebuch=JSON.parse(saved); const el=document.getElementById("tagebuchLetzter"); if(el&&tagebuch.length) el.textContent=tagebuch[tagebuch.length-1] }
+    const saved = localStorage.getItem("tagebuch")
+    if(saved){
+      tagebuch = JSON.parse(saved)
+      const el = document.getElementById("tagebuchLetzter")
+      if(el && tagebuch.length) el.textContent = tagebuch[tagebuch.length-1]
+    }
   }catch{}
 })
 
