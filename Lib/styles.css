@@ -1355,10 +1355,9 @@ header {
 }
 #abschnitteContainer {
   margin-top: clamp(6px,0.6vw,10px);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: clamp(5px,0.5vw,8px);
-  align-items: start;
 }
 /* Abschnitte kompakter damit sie auf den Bildschirm passen */
 .abschnitt {
