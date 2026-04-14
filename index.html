@@ -164,6 +164,10 @@
 <button class="exportBtn" onclick="exportEinsatz()">Export / Druck</button>
 <button onclick="startEinsatz()" style="color:var(--accent-green);border-color:rgba(26,122,82,0.4);background:rgba(26,122,82,0.07)">Einsatz starten</button>
 <button onclick="endEinsatz()" style="color:var(--accent-red);border-color:rgba(192,57,43,0.4);background:rgba(192,57,43,0.07)">Einsatz beenden</button>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:2px">
+  <button onclick="einsatzAusDateiLaden()" title="Einsatz aus JSON-Datei laden" style="font-size:11px;padding:6px 4px;color:var(--text-dim);border-color:var(--border);background:transparent;letter-spacing:0.5px">📂 Datei laden</button>
+  <button onclick="einsatzAusFirebaseWiederherstellen()" title="Letzten Stand aus Cloud laden" style="font-size:11px;padding:6px 4px;color:var(--text-dim);border-color:var(--border);background:transparent;letter-spacing:0.5px">☁ Cloud laden</button>
+</div>
 </div>
 
 <div id="timer">00:00:00</div>
@@ -187,10 +191,25 @@
 </div>
 
 <div class="funkPanel" style="margin-top:10px">
+
 <h3>Einsatztagebuch</h3>
+
 <input id="tagebuchInput" placeholder="Eintrag…">
 <button onclick="tagebuchSenden()">Eintragen</button>
-<div id="tagebuchLetzter" style="margin-top:8px;padding:8px 10px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:5px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-secondary);min-height:38px;line-height:1.6;"></div>
+
+<div id="tagebuchLetzter" style="
+  margin-top:8px;
+  padding:8px 10px;
+  background:var(--bg-card);
+  border:1.5px solid var(--border);
+  border-radius:5px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:12px;
+  color:var(--text-secondary);
+  min-height:38px;
+  line-height:1.6;
+"></div>
+
 </div>
 
 </div>
@@ -217,26 +236,34 @@
       <button class="sichtBtn sk4" onclick="setSichtung('SK4')">SK4</button>
       <span id="sichtungLabel" class="sichtungLabel">–</span>
     </div>
+    <button class="sichtSetzenBtn" onclick="sichtungSetzen()">Sichtung zuweisen</button>
 
     <div class="popupButtons">
-      <button onclick="patientAction('add')">Anlegen</button>
-      <button onclick="patientAction('21')">SEG-21</button>
-      <button onclick="patientAction('22')">SEG-22</button>
-      <button onclick="patientAction('EVAK')">EVAK</button>
-      <button onclick="patientAction('TRANSPORT')">Transport</button>
-      <button onclick="patientAction('remove')">Transport beendet</button>
-      <button onclick="patientAction('RUECK')">Rückführung</button>
-      <button onclick="patientAction('DELETE')">Löschen</button>
-      <button onclick="toggleVehicleSelect()">Fahrzeug</button>
-      <button onclick="closePopup()">Schließen</button>
-    </div>
 
-    <div id="vehicleSelectBox" style="display:none;margin-top:10px">
-      <select id="vehicleSelect" style="width:100%"></select>
-      <button onclick="assignPatientsToVehicle()" style="margin-top:6px;width:100%">Patienten Fahrzeug zuweisen</button>
-    </div>
+<button onclick="patientAction('add')">Anlegen</button>
+<button onclick="patientAction('21')">SEG-21</button>
+<button onclick="patientAction('22')">SEG-22</button>
+<button onclick="patientAction('EVAK')">EVAK</button>
+<button onclick="patientAction('TRANSPORT')">Transport</button>
+<button onclick="patientAction('remove')">Transport beendet</button>
+<button onclick="patientAction('RUECK')">Rückführung</button>
+<button onclick="patientAction('DELETE')">Löschen</button>
 
-  </div>
+<button onclick="toggleVehicleSelect()">Fahrzeug</button>
+<button onclick="closePopup()">Schließen</button>
+</div>
+
+<div id="vehicleSelectBox" style="display:none;margin-top:10px">
+<select id="vehicleSelect" style="width:100%"></select>
+
+<button onclick="assignPatientsToVehicle()" style="margin-top:6px;width:100%">
+Patienten Fahrzeug zuweisen
+</button>
+</div>
+
+
+</div>
+
 </div>
 
 
@@ -341,8 +368,6 @@
     </div>
   </div>
 </div>
-
-<div id="autosaveIndicator">Autosave aktiv</div>
 
 <!-- SHORTCUT OVERLAY -->
 <div id="shortcutOverlay" class="popup" onclick="this.style.display='none'">
